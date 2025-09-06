@@ -35,7 +35,7 @@ fi
 echo "✅ Docker and Docker Compose are installed"
 echo ""
 
-аляешь все контейнеры?# Clean up any existing bot containers only
+# Clean up any existing bot containers only
 echo "🧹 Cleaning up existing bot containers..."
 docker stop wg-telegram-bot 2>/dev/null || true
 docker rm wg-telegram-bot 2>/dev/null || true
