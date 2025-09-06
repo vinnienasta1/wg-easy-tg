@@ -1,8 +1,8 @@
 # WG-Easy Telegram Bot
 
-Telegram бот для управления WG-Easy VPN сервером.
+Telegram бот для управления WG-Easy VPN сервером. Поддерживает роли Админа и Клиента, красивые кнопки, запуск в отдельном контейнере Docker.
 
-## Возможности
+## 🚀 Возможности
 
 ### Для пользователей:
 - 📥 Скачивание конфигурации WireGuard
@@ -17,16 +17,46 @@ Telegram бот для управления WG-Easy VPN сервером.
 - 🗑 Удаление клиентов (в разработке)
 - 📣 Рассылка сообщений (в разработке)
 
-## Установка
+## 🛠 Технологии
 
-1. Клонируйте репозиторий
-2. Настройте переменные окружения в `.env`
-3. Запустите бота:
+- **Python 3.12** - основной язык
+- **aiogram 3.22** - Telegram Bot API
+- **Docker & Docker Compose** - контейнеризация
+- **SQLite** - база данных
+- **httpx** - HTTP клиент для WG-Easy API
+- **qrcode** - генерация QR-кодов
 
+## 🚀 Быстрая установка
+
+### Linux/macOS:
 ```bash
-chmod +x start_bot.sh
-./start_bot.sh
+bash -lc 'git clone https://github.com/vinnienasta1/wg-easy-tg.git && cd wg-easy-tg && bash scripts/install.sh && docker compose up --build -d'
 ```
+
+### Windows (PowerShell):
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "git clone https://github.com/vinnienasta1/wg-easy-tg.git; Set-Location wg-easy-tg; powershell -File scripts/install.ps1 -RunCompose"
+```
+
+## 📋 Ручная установка
+
+1. **Клонируйте репозиторий:**
+   ```bash
+   git clone https://github.com/vinnienasta1/wg-easy-tg.git
+   cd wg-easy-tg
+   ```
+
+2. **Настройте переменные окружения:**
+   ```bash
+   cp env.example .env
+   # Отредактируйте .env файл с вашими настройками
+   ```
+
+3. **Запустите бота:**
+   ```bash
+   chmod +x start_bot.sh
+   ./start_bot.sh
+   ```
 
 ## Управление
 
@@ -41,13 +71,96 @@ chmod +x start_bot.sh
 docker-compose logs -f wg-telegram-bot
 ```
 
-## Переменные окружения
+## ⚙️ Переменные окружения
 
-- `TG_BOT_TOKEN` - токен Telegram бота
+См. `env.example` для полного списка переменных.
+
+### Обязательные:
+- `TG_BOT_TOKEN` - токен Telegram бота (получить у [@BotFather](https://t.me/BotFather))
 - `ADMINS` - список ID администраторов через запятую
-- `WG_EASY_BASE_URL` - URL WG-Easy сервера
-- `WG_EASY_USERNAME` - имя пользователя WG-Easy
+- `WG_EASY_BASE_URL` - URL WG-Easy сервера (например: `http://IP:51821`)
 - `WG_EASY_PASSWORD` - пароль WG-Easy
-- `WG_EASY_VERIFY_SSL` - проверка SSL сертификата
-- `DB_PATH` - путь к базе данных
-- `LOG_LEVEL` - уровень логирования
+
+### Важные замечания:
+- Указывайте `WG_EASY_BASE_URL` с протоколом: `http://IP:51821` или `https://vpn.example.com`
+- Порт 51820 — это порт WireGuard, а веб-интерфейс WG-Easy обычно на 51821
+- Если у WG-Easy самоподписанный сертификат, добавьте `WG_EASY_VERIFY_SSL=false`
+
+## 🏗 Структура проекта
+
+```
+app/
+├── handlers/        # обработчики бота
+│   ├── admin.py     # админские функции
+│   ├── client.py    # клиентские функции
+│   └── common.py    # общие команды
+├── keyboards/       # клавиатуры и кнопки
+├── services/        # интеграции
+│   ├── wg_easy_client.py  # клиент WG-Easy API
+│   └── qr.py        # генерация QR-кодов
+├── config.py        # настройки из ENV
+├── db.py           # работа с базой данных
+├── logger.py       # логирование
+└── main.py         # точка входа
+```
+
+## 🧪 Разработка без Docker
+
+```bash
+# Создание виртуального окружения
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# Установка зависимостей
+pip install -r requirements.txt
+
+# Запуск бота
+python -m app.main
+```
+
+## 🚀 Деплой на сервер
+
+1. **Клонируйте репозиторий на сервер:**
+   ```bash
+   git clone https://github.com/vinnienasta1/wg-easy-tg.git
+   cd wg-easy-tg
+   ```
+
+2. **Настройте переменные окружения:**
+   ```bash
+   cp env.example .env
+   nano .env  # отредактируйте настройки
+   ```
+
+3. **Запустите через Docker Compose:**
+   ```bash
+   docker compose up -d
+   ```
+
+4. **Проверьте статус:**
+   ```bash
+   docker compose ps
+   docker compose logs -f wg-telegram-bot
+   ```
+
+## 📝 Лицензия
+
+MIT License - см. файл [LICENSE](LICENSE) для деталей.
+
+## 🤝 Вклад в проект
+
+1. Форкните репозиторий
+2. Создайте ветку для новой функции (`git checkout -b feature/AmazingFeature`)
+3. Зафиксируйте изменения (`git commit -m 'Add some AmazingFeature'`)
+4. Отправьте в ветку (`git push origin feature/AmazingFeature`)
+5. Откройте Pull Request
+
+## 📞 Поддержка
+
+Если у вас есть вопросы или проблемы:
+- Создайте [Issue](https://github.com/vinnienasta1/wg-easy-tg/issues)
+- Или свяжитесь с автором
+
+---
+
+⭐ **Если проект вам понравился, поставьте звезду!**
