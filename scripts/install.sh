@@ -8,6 +8,16 @@ set -e
 echo "🚀 Installing WG-Easy Telegram Bot..."
 echo ""
 
+# Check if we're already in the project directory
+if [ -f "scripts/install.sh" ] && [ -f "docker-compose.yml" ]; then
+    echo "✅ Already in the project directory"
+    echo ""
+else
+    echo "❌ Please run this script from the project directory or use the full installation command:"
+    echo "   bash -lc 'rm -rf wg-easy-tg && git clone https://github.com/vinnienasta1/wg-easy-tg.git && cd wg-easy-tg && bash scripts/install.sh'"
+    exit 1
+fi
+
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then
     echo "❌ Docker is not installed. Please install Docker first."

@@ -30,12 +30,16 @@ Telegram бот для управления WG-Easy VPN сервером. Под
 
 ### Linux/macOS:
 ```bash
-bash -lc 'git clone https://github.com/vinnienasta1/wg-easy-tg.git && cd wg-easy-tg && bash scripts/install.sh'
+# Полная установка с клонированием (рекомендуется)
+bash -lc 'rm -rf wg-easy-tg && git clone https://github.com/vinnienasta1/wg-easy-tg.git && cd wg-easy-tg && bash scripts/install.sh'
+
+# Или используйте скрипт полной установки
+curl -sSL https://raw.githubusercontent.com/vinnienasta1/wg-easy-tg/main/scripts/full-install.sh | bash
 ```
 
 ### Windows (PowerShell):
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "git clone https://github.com/vinnienasta1/wg-easy-tg.git; Set-Location wg-easy-tg; powershell -File scripts/install.ps1 -RunCompose"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "if (Test-Path 'wg-easy-tg') { Remove-Item -Recurse -Force 'wg-easy-tg' }; git clone https://github.com/vinnienasta1/wg-easy-tg.git; Set-Location wg-easy-tg; powershell -File scripts/install.ps1 -RunCompose"
 ```
 
 > **💡 Интерактивная установка:** Скрипты автоматически запросят у вас все необходимые данные:
