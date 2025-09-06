@@ -35,6 +35,13 @@ fi
 echo "✅ Docker and Docker Compose are installed"
 echo ""
 
+аляешь все контейнеры?# Clean up any existing bot containers only
+echo "🧹 Cleaning up existing bot containers..."
+docker stop wg-telegram-bot 2>/dev/null || true
+docker rm wg-telegram-bot 2>/dev/null || true
+echo "✅ Bot cleanup completed"
+echo ""
+
 # Interactive configuration
 echo "📝 Please provide the following configuration:"
 echo ""
@@ -63,6 +70,10 @@ while true; do
         echo "❌ Invalid IP address format. Please try again."
     fi
 done
+
+# WG-Easy Port
+read -p "🔌 Enter WG-Easy web interface port (default: 51821): " WG_PORT
+WG_PORT=${WG_PORT:-51821}
 
 # WG-Easy Username
 read -p "👤 Enter WG-Easy username (default: admin): " WG_USERNAME
@@ -96,7 +107,7 @@ echo "📝 Creating .env file..."
 cat > .env << EOF
 TG_BOT_TOKEN=$TG_BOT_TOKEN
 ADMINS=$ADMIN_IDS
-WG_EASY_BASE_URL=http://$SERVER_IP:51821
+WG_EASY_BASE_URL=http://$SERVER_IP:$WG_PORT
 WG_EASY_USERNAME=$WG_USERNAME
 WG_EASY_PASSWORD=$WG_PASSWORD
 WG_EASY_VERIFY_SSL=$WG_VERIFY_SSL
@@ -104,9 +115,7 @@ DB_PATH=./data/bot.db
 LOG_LEVEL=INFO
 EOF
 
-# Update docker-compose.yml with server IP
-echo "🔧 Updating docker-compose.yml..."
-sed -i "s/your-server-ip/$SERVER_IP/g" docker-compose.yml
+# Docker-compose.yml is ready to use
 
 # Create data directory
 echo "📁 Creating data directory..."
@@ -123,6 +132,7 @@ echo "📋 Configuration saved:"
 echo "   Bot Token: ${TG_BOT_TOKEN:0:10}..."
 echo "   Admin IDs: $ADMIN_IDS"
 echo "   Server IP: $SERVER_IP"
+echo "   WG-Easy Port: $WG_PORT"
 echo "   WG-Easy Username: $WG_USERNAME"
 echo "   SSL Verification: $WG_VERIFY_SSL"
 echo ""

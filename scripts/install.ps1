@@ -28,6 +28,16 @@ try {
 }
 
 Write-Host ""
+Write-Host "🧹 Cleaning up existing bot containers..." -ForegroundColor Yellow
+try {
+    docker stop wg-telegram-bot 2>$null
+    docker rm wg-telegram-bot 2>$null
+    Write-Host "✅ Bot cleanup completed" -ForegroundColor Green
+} catch {
+    Write-Host "ℹ️  No existing bot containers to clean up" -ForegroundColor Cyan
+}
+Write-Host ""
+
 Write-Host "📝 Please provide the following configuration:" -ForegroundColor Cyan
 Write-Host ""
 
@@ -54,6 +64,12 @@ do {
         Write-Host "❌ Invalid IP address format. Please try again." -ForegroundColor Red
     }
 } while ($true)
+
+# WG-Easy Port
+$WG_PORT = Read-Host "🔌 Enter WG-Easy web interface port (default: 51821)"
+if ([string]::IsNullOrEmpty($WG_PORT)) {
+    $WG_PORT = "51821"
+}
 
 # WG-Easy Username
 $WG_USERNAME = Read-Host "👤 Enter WG-Easy username (default: admin)"
@@ -91,7 +107,7 @@ Write-Host "📝 Creating .env file..." -ForegroundColor Yellow
 $envContent = @"
 TG_BOT_TOKEN=$TG_BOT_TOKEN
 ADMINS=$ADMIN_IDS
-WG_EASY_BASE_URL=http://$SERVER_IP:51821
+WG_EASY_BASE_URL=http://$SERVER_IP:$WG_PORT
 WG_EASY_USERNAME=$WG_USERNAME
 WG_EASY_PASSWORD=$WG_PASSWORD_PLAIN
 WG_EASY_VERIFY_SSL=$WG_VERIFY_SSL
@@ -100,11 +116,7 @@ LOG_LEVEL=INFO
 "@
 $envContent | Out-File -FilePath ".env" -Encoding UTF8
 
-# Update docker-compose.yml with server IP
-Write-Host "🔧 Updating docker-compose.yml..." -ForegroundColor Yellow
-$dockerComposeContent = Get-Content "docker-compose.yml" -Raw
-$dockerComposeContent = $dockerComposeContent -replace "your-server-ip", $SERVER_IP
-$dockerComposeContent | Out-File -FilePath "docker-compose.yml" -Encoding UTF8
+# Docker-compose.yml is ready to use
 
 # Create data directory
 Write-Host "📁 Creating data directory..." -ForegroundColor Yellow
@@ -117,6 +129,7 @@ Write-Host "📋 Configuration saved:" -ForegroundColor Cyan
 Write-Host "   Bot Token: $($TG_BOT_TOKEN.Substring(0, 10))..." -ForegroundColor White
 Write-Host "   Admin IDs: $ADMIN_IDS" -ForegroundColor White
 Write-Host "   Server IP: $SERVER_IP" -ForegroundColor White
+Write-Host "   WG-Easy Port: $WG_PORT" -ForegroundColor White
 Write-Host "   WG-Easy Username: $WG_USERNAME" -ForegroundColor White
 Write-Host "   SSL Verification: $WG_VERIFY_SSL" -ForegroundColor White
 Write-Host ""

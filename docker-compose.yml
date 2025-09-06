@@ -9,41 +9,8 @@ services:
       - .env
     volumes:
       - ./data:/app/data
-    depends_on:
-      - wg-easy
     networks:
       - wg-network
-
-  wg-easy:
-    image: ghcr.io/wg-easy/wg-easy:14
-    container_name: wg-easy
-    restart: unless-stopped
-    environment:
-      - WG_HOST=your-server-ip
-      - PASSWORD_HASH=$$2a$$10$$N9qo8uLOickgx2ZMRZoMye.IjdQvOqG4q2Vd.8vVfEBLTy6gIBNw2
-      - WG_DEFAULT_ADDRESS=10.0.0.x
-      - WG_DEFAULT_DNS=8.8.8.8
-      - WG_MTU=1420
-      - WG_PERSISTENT_KEEPALIVE=25
-      - WG_ALLOWED_IPS=0.0.0.0/0
-      - WG_PORT=51820
-      - WG_DISABLED=0
-    ports:
-      - "51820:51820/udp"
-      - "51821:51821/tcp"
-    volumes:
-      - wg-easy-data:/etc/wireguard
-    cap_add:
-      - NET_ADMIN
-      - SYS_MODULE
-    sysctls:
-      - net.ipv4.ip_forward=1
-      - net.ipv4.conf.all.forwarding=1
-    networks:
-      - wg-network
-
-volumes:
-  wg-easy-data:
 
 networks:
   wg-network:

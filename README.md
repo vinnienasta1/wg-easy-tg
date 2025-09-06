@@ -46,8 +46,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "if (Test-Path 'wg-easy-t
 > - 🤖 Токен Telegram бота (от @BotFather)
 > - 👤 ID администраторов
 > - 🌐 IP адрес сервера
+> - 🔌 Порт веб-интерфейса WG-Easy (по умолчанию: 51821)
 > - 🔐 Данные для подключения к WG-Easy
 > - 🔒 Настройки SSL
+> 
+> **⚠️ Важно:** Убедитесь, что WG-Easy уже установлен и работает на вашем сервере!
 
 ## 📋 Ручная установка
 
@@ -93,9 +96,10 @@ docker-compose logs -f wg-telegram-bot
 - `WG_EASY_PASSWORD` - пароль WG-Easy
 
 ### Важные замечания:
-- Указывайте `WG_EASY_BASE_URL` с протоколом: `http://IP:51821` или `https://vpn.example.com`
-- Порт 51820 — это порт WireGuard, а веб-интерфейс WG-Easy обычно на 51821
+- Указывайте `WG_EASY_BASE_URL` с протоколом: `http://IP:PORT` или `https://vpn.example.com`
+- Порт 51820 — это порт WireGuard, а веб-интерфейс WG-Easy обычно на 51821 (но может быть любой)
 - Если у WG-Easy самоподписанный сертификат, добавьте `WG_EASY_VERIFY_SSL=false`
+- **WG-Easy должен быть установлен отдельно** - бот только подключается к нему
 
 ## 🏗 Структура проекта
 
@@ -152,6 +156,7 @@ python -m app.main
    ```bash
    docker compose ps
    docker compose logs -f wg-telegram-bot
+   docker compose logs -f tg_bot
    ```
 
 ## 📝 Лицензия
