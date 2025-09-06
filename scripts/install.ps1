@@ -59,7 +59,20 @@ $ADMIN_IDS = Read-Host "👤 Enter admin Telegram IDs (comma-separated, e.g., 12
 do {
     $SERVER_IP = Read-Host "🌐 Enter your server IP address (e.g., 192.168.1.100)"
     if ($SERVER_IP -match '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$') {
-        break
+        # Check if each octet is valid (0-255)
+        $octets = $SERVER_IP -split '\.'
+        $valid = $true
+        foreach ($octet in $octets) {
+            if ([int]$octet -gt 255 -or [int]$octet -lt 0) {
+                $valid = $false
+                break
+            }
+        }
+        if ($valid) {
+            break
+        } else {
+            Write-Host "❌ Invalid IP address. Each number must be between 0-255" -ForegroundColor Red
+        }
     } else {
         Write-Host "❌ Invalid IP address format. Please enter a valid IP like 192.168.1.100" -ForegroundColor Red
     }

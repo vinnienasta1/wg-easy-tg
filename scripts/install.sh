@@ -65,7 +65,20 @@ read -p "Admin IDs: " ADMIN_IDS
 while true; do
     read -p "🌐 Enter your server IP address (e.g., 192.168.1.100): " SERVER_IP
     if [[ $SERVER_IP =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-        break
+        # Check if each octet is valid (0-255)
+        IFS='.' read -ra ADDR <<< "$SERVER_IP"
+        valid=true
+        for i in "${ADDR[@]}"; do
+            if [[ $i -gt 255 || $i -lt 0 ]]; then
+                valid=false
+                break
+            fi
+        done
+        if [[ $valid == true ]]; then
+            break
+        else
+            echo "❌ Invalid IP address. Each number must be between 0-255"
+        fi
     else
         echo "❌ Invalid IP address format. Please enter a valid IP like 192.168.1.100"
     fi
