@@ -29,6 +29,7 @@ def init_db() -> None:
                 tg_id INTEGER NOT NULL,
                 peer_id TEXT NOT NULL UNIQUE,
                 name TEXT,
+                username TEXT,
                 expires_at INTEGER,
                 FOREIGN KEY(tg_id) REFERENCES users(tg_id)
             );
@@ -67,18 +68,18 @@ def get_client_by_tg(tg_id: int) -> Optional[Dict[str, Any]]:
         return dict(row) if row else None
 
 
-def upsert_client(tg_id: int, peer_id: str, name: Optional[str], expires_at: Optional[int]) -> None:
+def upsert_client(tg_id: int, peer_id: str, name: Optional[str], expires_at: Optional[int], username: Optional[str] = None) -> None:
     with get_conn() as conn:
         existing = conn.execute("SELECT id FROM clients WHERE peer_id = ?", (peer_id,)).fetchone()
         if existing:
             conn.execute(
-                "UPDATE clients SET tg_id = ?, name = ?, expires_at = ? WHERE peer_id = ?",
-                (tg_id, name, expires_at, peer_id),
+                "UPDATE clients SET tg_id = ?, name = ?, expires_at = ?, username = ? WHERE peer_id = ?",
+                (tg_id, name, expires_at, username, peer_id),
             )
         else:
             conn.execute(
-                "INSERT INTO clients (tg_id, peer_id, name, expires_at) VALUES (?, ?, ?, ?)",
-                (tg_id, peer_id, name, expires_at),
+                "INSERT INTO clients (tg_id, peer_id, name, expires_at, username) VALUES (?, ?, ?, ?, ?)",
+                (tg_id, peer_id, name, expires_at, username),
             )
         conn.commit()
 
@@ -91,3 +92,30 @@ def set_expiry(peer_id: str, expires_at: Optional[int]) -> None:
 
 def now_ts() -> int:
     return int(time.time())
+
+
+def get_all_clients() -> List[Dict[str, Any]]:
+    with get_conn() as conn:
+        cur = conn.execute("SELECT * FROM clients ORDER BY name")
+        return [dict(row) for row in cur.fetchall()]
+
+
+def get_client_by_peer_id(peer_id: str) -> Optional[Dict[str, Any]]:
+    with get_conn() as conn:
+        cur = conn.execute("SELECT * FROM clients WHERE peer_id = ? LIMIT 1", (peer_id,))
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def delete_client(peer_id: str) -> None:
+    with get_conn() as conn:
+        conn.execute("DELETE FROM clients WHERE peer_id = ?", (peer_id,))
+        conn.commit()
+
+
+def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
+    """Получить пользователя по username (без @)"""
+    with get_conn() as conn:
+        cur = conn.execute("SELECT * FROM users WHERE tg_id IN (SELECT tg_id FROM clients WHERE username = ?)", (username,))
+        row = cur.fetchone()
+        return dict(row) if row else None

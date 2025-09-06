@@ -12,12 +12,14 @@ from .handlers.common import router as common_router
 from .handlers.client import router as client_router
 from .handlers.admin import router as admin_router
 from .db import init_db
+from .migrate_db import migrate_database
 
 
 async def main() -> None:
     setup_logging()
     logging.getLogger(__name__).info("Starting bot...")
     init_db()
+    migrate_database()
 
     bot = Bot(
         token=settings.tg_bot_token,

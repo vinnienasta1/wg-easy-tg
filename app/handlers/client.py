@@ -6,16 +6,39 @@ from aiogram.types import CallbackQuery, FSInputFile, BufferedInputFile
 from ..keyboards.main_menu import client_menu
 from ..services.wg_easy_client import WGEasyClient
 from ..services.qr import config_to_qr_png_bytes
-from ..db import get_client_by_tg
+from ..db import get_client_by_tg, upsert_client
 
 
 router = Router()
 logger = logging.getLogger(__name__)
 
 
+def ensure_client_linked(tg_id: int, username: str = None) -> dict:
+    """Убеждаемся, что клиент связан с Telegram ID"""
+    record = get_client_by_tg(tg_id)
+    
+    # Если клиент найден по tg_id, возвращаем его
+    if record:
+        return record
+    
+    # Если не найден, но есть username, ищем по username
+    if username:
+        # Ищем клиента с таким username но без tg_id
+        from ..db import get_all_clients
+        clients = get_all_clients()
+        for client in clients:
+            if client.get('username') == username and client.get('tg_id') == 0:
+                # Связываем клиента с текущим tg_id
+                upsert_client(tg_id, client['peer_id'], client['name'], client.get('expires_at'), username)
+                return get_client_by_tg(tg_id)
+    
+    return None
+
+
 @router.callback_query(F.data == "client:config")
 async def client_get_config(call: CallbackQuery) -> None:
-    record = get_client_by_tg(call.from_user.id)
+    username = call.from_user.username
+    record = ensure_client_linked(call.from_user.id, username)
     if not record:
         await call.answer("❌ Профиль не найден. Обратитесь к администратору.", show_alert=True)
         return
@@ -53,7 +76,8 @@ async def client_get_config(call: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "client:qr")
 async def client_get_qr(call: CallbackQuery) -> None:
-    record = get_client_by_tg(call.from_user.id)
+    username = call.from_user.username
+    record = ensure_client_linked(call.from_user.id, username)
     if not record:
         await call.answer("❌ Профиль не найден. Обратитесь к администратору.", show_alert=True)
         return
@@ -77,7 +101,8 @@ async def client_get_qr(call: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "client:expiry")
 async def client_get_expiry(call: CallbackQuery) -> None:
-    record = get_client_by_tg(call.from_user.id)
+    username = call.from_user.username
+    record = ensure_client_linked(call.from_user.id, username)
     if not record:
         await call.answer("❌ Профиль не найден. Обратитесь к администратору.", show_alert=True)
         return
