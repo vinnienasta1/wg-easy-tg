@@ -6,6 +6,7 @@
 set -e
 
 echo "🚀 Installing WG-Easy Telegram Bot..."
+echo ""
 
 # Check if Docker is installed
 if ! command -v docker &> /dev/null; then
@@ -21,14 +22,81 @@ if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/
     exit 1
 fi
 
-# Create .env file if it doesn't exist
-if [ ! -f .env ]; then
-    echo "📝 Creating .env file from template..."
-    cp env.example .env
-    echo "⚠️  Please edit .env file with your configuration before running the bot."
-    echo "   Required: TG_BOT_TOKEN, ADMINS, WG_EASY_BASE_URL, WG_EASY_PASSWORD"
-    exit 1
+echo "✅ Docker and Docker Compose are installed"
+echo ""
+
+# Interactive configuration
+echo "📝 Please provide the following configuration:"
+echo ""
+
+# Telegram Bot Token
+while true; do
+    read -p "🤖 Enter your Telegram Bot Token (from @BotFather): " TG_BOT_TOKEN
+    if [[ $TG_BOT_TOKEN =~ ^[0-9]+:[A-Za-z0-9_-]+$ ]]; then
+        break
+    else
+        echo "❌ Invalid bot token format. Please try again."
+    fi
+done
+
+# Admin IDs
+echo ""
+echo "👤 Enter admin Telegram IDs (comma-separated, e.g., 123456789,987654321):"
+read -p "Admin IDs: " ADMIN_IDS
+
+# Server IP
+while true; do
+    read -p "🌐 Enter your server IP address: " SERVER_IP
+    if [[ $SERVER_IP =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+        break
+    else
+        echo "❌ Invalid IP address format. Please try again."
+    fi
+done
+
+# WG-Easy Username
+read -p "👤 Enter WG-Easy username (default: admin): " WG_USERNAME
+WG_USERNAME=${WG_USERNAME:-admin}
+
+# WG-Easy Password
+while true; do
+    read -s -p "🔐 Enter WG-Easy password: " WG_PASSWORD
+    echo ""
+    if [ -n "$WG_PASSWORD" ]; then
+        break
+    else
+        echo "❌ Password cannot be empty. Please try again."
+    fi
+done
+
+# SSL Verification
+echo ""
+read -p "🔒 Use SSL verification? (y/n, default: y): " SSL_VERIFY
+SSL_VERIFY=${SSL_VERIFY:-y}
+
+if [[ $SSL_VERIFY =~ ^[Yy]$ ]]; then
+    WG_VERIFY_SSL="true"
+else
+    WG_VERIFY_SSL="false"
 fi
+
+# Create .env file
+echo ""
+echo "📝 Creating .env file..."
+cat > .env << EOF
+TG_BOT_TOKEN=$TG_BOT_TOKEN
+ADMINS=$ADMIN_IDS
+WG_EASY_BASE_URL=http://$SERVER_IP:51821
+WG_EASY_USERNAME=$WG_USERNAME
+WG_EASY_PASSWORD=$WG_PASSWORD
+WG_EASY_VERIFY_SSL=$WG_VERIFY_SSL
+DB_PATH=./data/bot.db
+LOG_LEVEL=INFO
+EOF
+
+# Update docker-compose.yml with server IP
+echo "🔧 Updating docker-compose.yml..."
+sed -i "s/your-server-ip/$SERVER_IP/g" docker-compose.yml
 
 # Create data directory
 echo "📁 Creating data directory..."
@@ -38,11 +106,25 @@ mkdir -p data
 echo "🔧 Setting up scripts..."
 chmod +x start_bot.sh stop_bot.sh
 
+echo ""
 echo "✅ Installation completed!"
 echo ""
-echo "📋 Next steps:"
-echo "1. Edit .env file with your configuration"
-echo "2. Run: ./start_bot.sh"
-echo "3. Check logs: docker compose logs -f wg-telegram-bot"
+echo "📋 Configuration saved:"
+echo "   Bot Token: ${TG_BOT_TOKEN:0:10}..."
+echo "   Admin IDs: $ADMIN_IDS"
+echo "   Server IP: $SERVER_IP"
+echo "   WG-Easy Username: $WG_USERNAME"
+echo "   SSL Verification: $WG_VERIFY_SSL"
 echo ""
-echo "🛑 To stop: ./stop_bot.sh"
+echo "🚀 Starting bot..."
+docker compose up -d --build
+
+echo ""
+echo "✅ Bot started successfully!"
+echo ""
+echo "📊 Useful commands:"
+echo "   View logs: docker compose logs -f wg-telegram-bot"
+echo "   Stop bot: ./stop_bot.sh"
+echo "   Restart: docker compose restart"
+echo ""
+echo "🎉 Your WG-Easy Telegram Bot is ready to use!"

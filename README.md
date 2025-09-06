@@ -30,13 +30,20 @@ Telegram бот для управления WG-Easy VPN сервером. Под
 
 ### Linux/macOS:
 ```bash
-bash -lc 'git clone https://github.com/vinnienasta1/wg-easy-tg.git && cd wg-easy-tg && bash scripts/install.sh && docker compose up --build -d'
+bash -lc 'git clone https://github.com/vinnienasta1/wg-easy-tg.git && cd wg-easy-tg && bash scripts/install.sh'
 ```
 
 ### Windows (PowerShell):
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -Command "git clone https://github.com/vinnienasta1/wg-easy-tg.git; Set-Location wg-easy-tg; powershell -File scripts/install.ps1 -RunCompose"
 ```
+
+> **💡 Интерактивная установка:** Скрипты автоматически запросят у вас все необходимые данные:
+> - 🤖 Токен Telegram бота (от @BotFather)
+> - 👤 ID администраторов
+> - 🌐 IP адрес сервера
+> - 🔐 Данные для подключения к WG-Easy
+> - 🔒 Настройки SSL
 
 ## 📋 Ручная установка
 

@@ -19,7 +19,7 @@ services:
     container_name: wg-easy
     restart: unless-stopped
     environment:
-      - WG_HOST=166.1.22.123
+      - WG_HOST=your-server-ip
       - PASSWORD_HASH=$$2a$$10$$N9qo8uLOickgx2ZMRZoMye.IjdQvOqG4q2Vd.8vVfEBLTy6gIBNw2
       - WG_DEFAULT_ADDRESS=10.0.0.x
       - WG_DEFAULT_DNS=8.8.8.8
