@@ -63,11 +63,11 @@ read -p "Admin IDs: " ADMIN_IDS
 
 # Server IP
 while true; do
-    read -p "🌐 Enter your server IP address: " SERVER_IP
+    read -p "🌐 Enter your server IP address (e.g., 192.168.1.100): " SERVER_IP
     if [[ $SERVER_IP =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
         break
     else
-        echo "❌ Invalid IP address format. Please try again."
+        echo "❌ Invalid IP address format. Please enter a valid IP like 192.168.1.100"
     fi
 done
 

@@ -57,11 +57,11 @@ $ADMIN_IDS = Read-Host "👤 Enter admin Telegram IDs (comma-separated, e.g., 12
 
 # Server IP
 do {
-    $SERVER_IP = Read-Host "🌐 Enter your server IP address"
+    $SERVER_IP = Read-Host "🌐 Enter your server IP address (e.g., 192.168.1.100)"
     if ($SERVER_IP -match '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$') {
         break
     } else {
-        Write-Host "❌ Invalid IP address format. Please try again." -ForegroundColor Red
+        Write-Host "❌ Invalid IP address format. Please enter a valid IP like 192.168.1.100" -ForegroundColor Red
     }
 } while ($true)
 
