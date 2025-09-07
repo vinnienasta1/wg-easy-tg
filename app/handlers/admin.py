@@ -17,9 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class AdminStates(StatesGroup):
-    waiting_for_name = State()
-    waiting_for_username = State()
-    waiting_for_peer_id = State()
+    pass
 
 
 def is_admin(user_id: int) -> bool:
@@ -103,101 +101,6 @@ async def admin_monitor(call: CallbackQuery) -> None:
     
     await call.message.edit_text(text, reply_markup=admin_menu(), parse_mode="Markdown")
     await call.answer()
-
-
-@router.callback_query(F.data == "admin:add")
-async def admin_add_start(call: CallbackQuery, state: FSMContext) -> None:
-    if not await check_admin_rights(call):
-        return
-    
-    await call.message.edit_text(
-        "➕ <b>Добавление нового клиента</b>\n\n"
-        "Введите имя для нового клиента:",
-        reply_markup=None
-    )
-    await state.set_state(AdminStates.waiting_for_name)
-    await call.answer()
-
-
-@router.message(AdminStates.waiting_for_name)
-async def admin_add_name(message: Message, state: FSMContext) -> None:
-    if not is_admin(message.from_user.id):
-        await message.answer("❌ Нет прав доступа")
-        await state.clear()
-        return
-    
-    name = message.text.strip()
-    if not name:
-        await message.answer("❌ Имя не может быть пустым. Попробуйте еще раз:")
-        return
-    
-    try:
-        async with WGEasyClient() as api:
-            await api.login()
-            peer_data = await api.add_peer(name)
-        
-        peer_id = peer_data.get("id") or peer_data.get("peer_id")
-        if not peer_id:
-            await message.answer("❌ Не удалось получить ID нового клиента")
-            await state.clear()
-            return
-        
-        await state.update_data(peer_id=peer_id, name=name)
-        await message.answer(
-            f"✅ Клиент <b>{name}</b> создан!\n\n"
-            f"ID: <code>{peer_id}</code>\n\n"
-            "Теперь введите username пользователя (например: username или @username):"
-        )
-        await state.set_state(AdminStates.waiting_for_username)
-        
-    except Exception as e:
-        logger.error(f"Ошибка создания клиента: {e}")
-        await message.answer(f"❌ Ошибка создания клиента:\n<code>{str(e)}</code>")
-        await state.clear()
-
-
-@router.message(AdminStates.waiting_for_username)
-async def admin_add_username(message: Message, state: FSMContext) -> None:
-    if not is_admin(message.from_user.id):
-        await message.answer("❌ Нет прав доступа")
-        await state.clear()
-        return
-    
-    username = message.text.strip()
-    if username.startswith('@'):
-        username = username[1:]  # Убираем @ если есть
-    
-    if not username:
-        await message.answer("❌ Username не может быть пустым. Попробуйте еще раз:")
-        return
-    
-    data = await state.get_data()
-    peer_id = data.get("peer_id")
-    name = data.get("name")
-    
-    if not peer_id or not name:
-        await message.answer("❌ Ошибка данных. Начните заново.")
-        await state.clear()
-        return
-    
-    try:
-        # Связываем клиента с username (tg_id будет получен позже при первом использовании)
-        upsert_client(0, peer_id, name, None, username)
-        
-        await message.answer(
-            f"✅ <b>Клиент успешно добавлен!</b>\n\n"
-            f"👤 Имя: <b>{name}</b>\n"
-            f"🆔 Peer ID: <code>{peer_id}</code>\n"
-            f"📱 Username: <code>@{username}</code>\n\n"
-            "Пользователь теперь может использовать бота для получения конфигурации.",
-            reply_markup=admin_menu()
-        )
-        await state.clear()
-        
-    except Exception as e:
-        logger.error(f"Ошибка связывания клиента: {e}")
-        await message.answer(f"❌ Ошибка связывания клиента:\n<code>{str(e)}</code>")
-        await state.clear()
 
 
 @router.callback_query(F.data == "admin:extend")

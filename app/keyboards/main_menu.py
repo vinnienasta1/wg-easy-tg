@@ -15,7 +15,6 @@ def admin_menu() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📊 Мониторинг", callback_data="admin:monitor")],
         [InlineKeyboardButton(text="👥 Клиенты", callback_data="admin:clients")],
-        [InlineKeyboardButton(text="➕ Добавить", callback_data="admin:add")],
         [InlineKeyboardButton(text="💾 Бэкап", callback_data="admin:backup")],
         [InlineKeyboardButton(text="📣 Рассылка", callback_data="admin:broadcast")],
     ])

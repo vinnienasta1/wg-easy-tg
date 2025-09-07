@@ -113,8 +113,8 @@ class WGEasyClient:
         raise RuntimeError(f"WG-Easy status not found on known endpoints: {last_error}")
 
     async def list_peers(self) -> List[Dict[str, Any]]:
-        # Поскольку API эндпоинты не работают, возвращаем пустой список
-        return []
+        """Получает список всех пиров из конфигурации"""
+        return self.read_peers_from_config()
 
     async def add_peer(self, name: str) -> Dict[str, Any]:
         # Поскольку API эндпоинты не работают, создаем заглушку
@@ -129,23 +129,96 @@ class WGEasyClient:
         pass
 
     async def get_peer_config(self, peer_id: str) -> str:
-        # Поскольку API эндпоинты не работают, возвращаем заглушку
-        return f"""# WireGuard конфигурация для {peer_id}
-[Interface]
-PrivateKey = YOUR_PRIVATE_KEY_HERE
-Address = 10.0.0.2/24
-DNS = 8.8.8.8
-
-[Peer]
-PublicKey = SERVER_PUBLIC_KEY_HERE
-Endpoint = {self.base_url.replace('http://', '').replace('https://', '')}:51820
-AllowedIPs = 0.0.0.0/0
-PersistentKeepalive = 25
-"""
+        """Получает конфигурацию пира из файла"""
+        try:
+            config_path = "/etc/wireguard/wg0.conf"
+            if not os.path.exists(config_path):
+                raise Exception("Config file not found")
+            
+            with open(config_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Извлекаем секцию [Peer] по индексу
+            import re
+            peer_sections = re.findall(r'\[Peer\](.*?)(?=\[|$)', content, re.DOTALL)
+            
+            # peer_id должен быть в формате "peer-1", "peer-2" и т.д.
+            if peer_id.startswith('peer-'):
+                try:
+                    index = int(peer_id.split('-')[1]) - 1
+                    if 0 <= index < len(peer_sections):
+                        peer_section = peer_sections[index]
+                        return f"[Peer]\n{peer_section.strip()}"
+                    else:
+                        raise Exception(f"Peer {peer_id} not found")
+                except ValueError:
+                    raise Exception(f"Invalid peer ID format: {peer_id}")
+            else:
+                raise Exception(f"Invalid peer ID format: {peer_id}")
+                
+        except Exception as e:
+            logger.error(f"Error getting peer config: {e}")
+            raise
 
     async def get_peer_qr_png(self, peer_id: str) -> bytes:
         # Поскольку API эндпоинты не работают, возвращаем пустые байты
         return b""
+
+    def read_peers_from_config(self) -> List[Dict[str, Any]]:
+        """Читает список пиров из файла wg0.conf"""
+        import os
+        peers = []
+        
+        try:
+            config_path = "/etc/wireguard/wg0.conf"
+            if not os.path.exists(config_path):
+                logger.warning(f"Config file not found: {config_path}")
+                return peers
+            
+            with open(config_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Парсим секции [Peer]
+            import re
+            peer_sections = re.findall(r'\[Peer\](.*?)(?=\[|$)', content, re.DOTALL)
+            
+            for i, section in enumerate(peer_sections):
+                lines = section.strip().split('\n')
+                peer_data = {
+                    'id': f'peer-{i+1}',
+                    'name': f'Peer {i+1}',
+                    'publicKey': '',
+                    'allowedIPs': '',
+                    'endpoint': '',
+                    'persistentKeepalive': ''
+                }
+                
+                for line in lines:
+                    line = line.strip()
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        key = key.strip()
+                        value = value.strip()
+                        
+                        if key == 'PublicKey':
+                            peer_data['publicKey'] = value
+                        elif key == 'AllowedIPs':
+                            peer_data['allowedIPs'] = value
+                        elif key == 'Endpoint':
+                            peer_data['endpoint'] = value
+                        elif key == 'PersistentKeepalive':
+                            peer_data['persistentKeepalive'] = value
+                
+                # Добавляем только если есть публичный ключ
+                if peer_data['publicKey']:
+                    peers.append(peer_data)
+            
+            logger.info(f"Found {len(peers)} peers in config file")
+            return peers
+            
+        except Exception as e:
+            logger.error(f"Error reading peers from config: {e}")
+            return peers
 
     async def check_for_updates(self, current_version: str) -> Dict[str, Any]:
         """Проверяет доступность обновлений WG-Easy"""
