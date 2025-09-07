@@ -20,16 +20,16 @@ def admin_menu() -> InlineKeyboardMarkup:
     ])
 
 
-def clients_list_keyboard(clients: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
-    """Клавиатура со списком клиентов"""
+def clients_list_keyboard(peers: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
+    """Клавиатура со списком клиентов из WG-Easy"""
     buttons = []
-    for client in clients:
-        name = client.get('name', 'Без имени')
-        username = client.get('username', '')
-        display_name = f"{name} (@{username})" if username else name
+    for peer in peers:
+        name = peer.get('name', 'Без имени')
+        peer_id = peer.get('id', '')
+        display_name = f"{name}"
         buttons.append([InlineKeyboardButton(
             text=display_name,
-            callback_data=f"admin:client:{client['peer_id']}"
+            callback_data=f"admin:client:{peer_id}"
         )])
     
     # Добавляем кнопку "Назад"

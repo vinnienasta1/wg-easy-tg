@@ -167,6 +167,8 @@ class WGEasyClient:
     def read_peers_from_config(self) -> List[Dict[str, Any]]:
         """Читает список пиров из файла wg0.conf"""
         import os
+        import logging
+        logger = logging.getLogger(__name__)
         peers = []
         
         try:
@@ -178,9 +180,13 @@ class WGEasyClient:
             with open(config_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
+            logger.info(f"Config file content length: {len(content)}")
+            
             # Парсим секции [Peer]
             import re
             peer_sections = re.findall(r'\[Peer\](.*?)(?=\[|$)', content, re.DOTALL)
+            
+            logger.info(f"Found {len(peer_sections)} peer sections")
             
             for i, section in enumerate(peer_sections):
                 lines = section.strip().split('\n')
@@ -212,6 +218,7 @@ class WGEasyClient:
                 # Добавляем только если есть публичный ключ
                 if peer_data['publicKey']:
                     peers.append(peer_data)
+                    logger.info(f"Added peer {i+1}: {peer_data['name']} with key {peer_data['publicKey'][:20]}...")
             
             logger.info(f"Found {len(peers)} peers in config file")
             return peers

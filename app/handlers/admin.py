@@ -134,37 +134,47 @@ async def admin_clients(call: CallbackQuery) -> None:
     if not await check_admin_rights(call):
         return
     
-    clients = get_all_clients()
-    if not clients:
+    try:
+        async with WGEasyClient() as api:
+            peers = await api.list_peers()
+        
+        if not peers:
+            await call.message.edit_text(
+                "👥 <b>Список клиентов</b>\n\n"
+                "Клиенты не найдены в конфигурации WG-Easy.",
+                reply_markup=admin_menu()
+            )
+            await call.answer()
+            return
+        
+        text = f"👥 <b>Список клиентов из WG-Easy</b>\n\n"
+        for i, peer in enumerate(peers, 1):
+            peer_id = peer.get('id', f'peer-{i}')
+            name = peer.get('name', f'Peer {i}')
+            public_key = peer.get('publicKey', '')
+            
+            # Обрезаем публичный ключ для отображения
+            short_key = public_key[:20] + "..." if len(public_key) > 20 else public_key
+            
+            text += f"{i}. <b>{name}</b>\n"
+            text += f"   🆔 ID: <code>{peer_id}</code>\n"
+            text += f"   🔑 Ключ: <code>{short_key}</code>\n\n"
+        
         await call.message.edit_text(
-            "👥 <b>Список клиентов</b>\n\n"
-            "Клиенты не найдены.",
+            text,
+            reply_markup=clients_list_keyboard(peers),
+            parse_mode="HTML"
+        )
+        await call.answer()
+        
+    except Exception as e:
+        logger.error(f"Ошибка получения списка клиентов: {e}")
+        await call.message.edit_text(
+            f"❌ <b>Ошибка получения списка клиентов</b>\n\n"
+            f"<code>{str(e)}</code>",
             reply_markup=admin_menu()
         )
         await call.answer()
-        return
-    
-    text = f"👥 <b>Список клиентов</b>\n\n"
-    for i, client in enumerate(clients, 1):
-        name = client.get('name', 'Без имени')
-        username = client.get('username', '')
-        expires_at = client.get('expires_at')
-        
-        if username:
-            text += f"{i}. <b>{name}</b> (@{username})\n"
-        else:
-            text += f"{i}. <b>{name}</b>\n"
-        
-        if expires_at:
-            from datetime import datetime
-            dt = datetime.fromtimestamp(expires_at)
-            text += f"   ⏳ До: {dt:%d.%m.%Y %H:%M}\n"
-        else:
-            text += f"   ♾️ Без ограничений\n"
-        text += "\n"
-    
-    await call.message.edit_text(text, reply_markup=clients_list_keyboard(clients))
-    await call.answer()
 
 
 @router.callback_query(F.data.startswith("admin:client:"))
@@ -173,30 +183,42 @@ async def admin_client_detail(call: CallbackQuery) -> None:
         return
     
     peer_id = call.data.split(":", 2)[2]
-    client = get_client_by_peer_id(peer_id)
     
-    if not client:
-        await call.answer("❌ Клиент не найден", show_alert=True)
-        return
-    
-    name = client.get('name', 'Без имени')
-    username = client.get('username', '')
-    expires_at = client.get('expires_at')
-    
-    text = f"👤 <b>Клиент: {name}</b>\n\n"
-    if username:
-        text += f"📱 Username: @{username}\n"
-    text += f"🆔 Peer ID: <code>{peer_id}</code>\n"
-    
-    if expires_at:
-        from datetime import datetime
-        dt = datetime.fromtimestamp(expires_at)
-        text += f"⏳ Действует до: {dt:%d.%m.%Y %H:%M}\n"
-    else:
-        text += f"♾️ Без ограничений\n"
-    
-    await call.message.edit_text(text, reply_markup=client_management_keyboard(peer_id))
-    await call.answer()
+    try:
+        async with WGEasyClient() as api:
+            peers = await api.list_peers()
+        
+        # Находим нужного пира
+        peer = None
+        for p in peers:
+            if p.get('id') == peer_id:
+                peer = p
+                break
+        
+        if not peer:
+            await call.answer("❌ Клиент не найден в конфигурации WG-Easy", show_alert=True)
+            return
+        
+        name = peer.get('name', 'Без имени')
+        public_key = peer.get('publicKey', '')
+        allowed_ips = peer.get('allowedIPs', '')
+        endpoint = peer.get('endpoint', '')
+        
+        text = f"👤 <b>Клиент: {name}</b>\n\n"
+        text += f"🆔 Peer ID: <code>{peer_id}</code>\n"
+        text += f"🔑 Публичный ключ: <code>{public_key}</code>\n"
+        
+        if allowed_ips:
+            text += f"🌐 Разрешенные IP: <code>{allowed_ips}</code>\n"
+        if endpoint:
+            text += f"🔗 Endpoint: <code>{endpoint}</code>\n"
+        
+        await call.message.edit_text(text, reply_markup=client_management_keyboard(peer_id))
+        await call.answer()
+        
+    except Exception as e:
+        logger.error(f"Ошибка получения деталей клиента: {e}")
+        await call.answer("❌ Ошибка получения данных клиента", show_alert=True)
 
 
 @router.callback_query(F.data.startswith("admin:subscription:"))
