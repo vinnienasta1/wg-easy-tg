@@ -43,6 +43,7 @@ def client_management_keyboard(peer_id: str) -> InlineKeyboardMarkup:
     """Клавиатура управления конкретным клиентом"""
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📅 Подписка", callback_data=f"admin:subscription:{peer_id}")],
+        [InlineKeyboardButton(text="📢 Уведомить", callback_data=f"admin:notify:{peer_id}")],
         [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"admin:delete_client:{peer_id}")],
         [InlineKeyboardButton(text="🔙 Назад к списку", callback_data="admin:clients")],
     ])

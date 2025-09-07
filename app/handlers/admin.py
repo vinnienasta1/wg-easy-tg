@@ -1,6 +1,8 @@
 import logging
+import subprocess
+import os
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, FSInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
@@ -41,6 +43,11 @@ async def admin_monitor(call: CallbackQuery) -> None:
         async with WGEasyClient() as api:
             await api.login()
             status = await api.get_status()
+            
+            # Проверяем обновления
+            current_version = status.get("version", "unknown")
+            update_info = await api.check_for_updates(current_version)
+            
     except Exception as e:
         logger.error(f"Ошибка получения статуса WG-Easy: {e}")
         await call.message.edit_text(
@@ -58,17 +65,31 @@ async def admin_monitor(call: CallbackQuery) -> None:
         
         text = (
             "📊 <b>Статус WG-Easy</b>\n\n"
-            f"✅ Сервер: <b>Онлайн</b>\n"
-            f"🔢 Версия: <code>{version}</code>\n"
-            f"🌐 URL: <code>{status.get('url', '-')}</code>\n"
+            f"✅ Сервер: Онлайн\n"
+            f"🔢 Версия: {version}\n"
         )
         
+        # Добавляем информацию об обновлениях
+        if update_info.get("is_update_available"):
+            text += f"🔄 Обновления: Доступно обновление\n"
+            text += f"📦 Последняя версия: {update_info.get('latest_version', 'Неизвестно')}\n"
+        else:
+            text += f"✅ Обновления: Актуальная версия\n"
+            text += f"📦 Последняя версия: {update_info.get('latest_version', 'Неизвестно')}\n"
+        
+        text += f"🌐 URL: {status.get('url', '-')}\n"
+        
         if update_available:
-            text += "🔄 Доступно обновление\n"
+            text += "🔄 Доступно обновление (встроенная проверка)\n"
         if insecure:
             text += "⚠️ Небезопасное соединение\n"
         
         text += f"💬 {status.get('message', 'Сервер работает')}\n"
+        
+        # Добавляем ссылку на релиз, если есть обновление
+        if update_info.get("is_update_available") and update_info.get("release_url"):
+            text += f"\n🔗 [Скачать обновление]({update_info['release_url']})"
+            
     else:
         peers = status.get("peers", []) if isinstance(status, dict) else []
         iface = status.get("interface", {}) if isinstance(status, dict) else {}
@@ -80,7 +101,7 @@ async def admin_monitor(call: CallbackQuery) -> None:
             f"🔌 Порт: <code>{iface.get('listenPort', '-')}</code>\n"
         )
     
-    await call.message.edit_text(text, reply_markup=admin_menu())
+    await call.message.edit_text(text, reply_markup=admin_menu(), parse_mode="Markdown")
     await call.answer()
 
 
@@ -412,40 +433,6 @@ async def admin_delete_client(call: CallbackQuery) -> None:
     await call.answer()
 
 
-@router.callback_query(F.data == "admin:backup")
-async def admin_backup(call: CallbackQuery) -> None:
-    if not await check_admin_rights(call):
-        return
-    
-    clients = get_all_clients()
-    if not clients:
-        await call.message.edit_text(
-            "💾 <b>Бэкап клиентов</b>\n\n"
-            "Клиенты не найдены.",
-            reply_markup=admin_menu()
-        )
-        await call.answer()
-        return
-    
-    # Создаем бэкап
-    import json
-    from datetime import datetime
-    
-    backup_data = {
-        "timestamp": datetime.now().isoformat(),
-        "clients": clients
-    }
-    
-    backup_text = f"💾 <b>Бэкап клиентов</b>\n\n"
-    backup_text += f"📅 Дата: {datetime.now().strftime('%d.%m.%Y %H:%M')}\n"
-    backup_text += f"👥 Клиентов: {len(clients)}\n\n"
-    backup_text += f"📄 <b>Данные бэкапа:</b>\n"
-    backup_text += f"<code>{json.dumps(backup_data, ensure_ascii=False, indent=2)}</code>"
-    
-    await call.message.edit_text(backup_text, reply_markup=admin_menu())
-    await call.answer()
-
-
 @router.callback_query(F.data == "admin:back")
 async def admin_back(call: CallbackQuery) -> None:
     if not await check_admin_rights(call):
@@ -457,6 +444,112 @@ async def admin_back(call: CallbackQuery) -> None:
         reply_markup=admin_menu()
     )
     await call.answer()
+
+
+@router.callback_query(F.data == "admin:backup")
+async def admin_backup(call: CallbackQuery) -> None:
+    if not await check_admin_rights(call):
+        return
+    
+    try:
+        # Создаем временную директорию
+        data_dir = os.path.join(os.getcwd(), "data")
+        os.makedirs(data_dir, exist_ok=True)
+        
+        # Путь к базе данных WG-Easy (монтируется как read-only)
+        wg_easy_db_path = "/etc/wireguard/wg-easy.db"
+        backup_file = os.path.join(data_dir, "wg-easy-backup.db")
+        
+        # Копируем базу данных
+        with open(wg_easy_db_path, "rb") as src:
+            with open(backup_file, "wb") as dst:
+                dst.write(src.read())
+        
+        # Отправляем файл пользователю
+        await call.message.answer_document(
+            FSInputFile(backup_file, filename="wg-easy-backup.db"),
+            caption="💾 <b>Бэкап WG-Easy</b>\n\n"
+                   "База данных содержит все настройки сервера и клиентов.\n"
+                   "Для восстановления замените файл wg-easy.db в контейнере."
+        )
+        
+        # Удаляем временный файл
+        os.remove(backup_file)
+        
+        await call.answer("✅ Бэкап успешно создан!")
+        
+    except FileNotFoundError:
+        logger.error("База данных WG-Easy не найдена")
+        await call.message.edit_text(
+            "❌ <b>Ошибка создания бэкапа</b>\n\n"
+            "База данных WG-Easy не найдена. Убедитесь, что том правильно смонтирован.",
+            reply_markup=admin_menu()
+        )
+        await call.answer()
+    except Exception as e:
+        logger.error(f"Неожиданная ошибка при создании бэкапа: {e}")
+        await call.message.edit_text(
+            f"❌ <b>Ошибка создания бэкапа</b>\n\n"
+            f"<code>{str(e)}</code>",
+            reply_markup=admin_menu()
+        )
+        await call.answer()
+
+
+@router.callback_query(F.data.startswith("admin:notify:"))
+async def admin_notify_client(call: CallbackQuery) -> None:
+    if not await check_admin_rights(call):
+        return
+    
+    peer_id = call.data.split(":", 2)[2]
+    client = get_client_by_peer_id(peer_id)
+    
+    if not client:
+        await call.answer("❌ Клиент не найден", show_alert=True)
+        return
+    
+    username = client.get('username', '')
+    name = client.get('name', 'Без имени')
+    
+    if not username:
+        await call.answer("❌ У клиента не указан username", show_alert=True)
+        return
+    
+    try:
+        # Отправляем уведомление пользователю
+        notification_text = (
+            f"🎉 <b>Добро пожаловать в VPN!</b>\n\n"
+            f"👤 Ваше имя: <b>{name}</b>\n"
+            f"🆔 Ваш ID: <code>{peer_id}</code>\n\n"
+            f"📱 <b>Как пользоваться ботом:</b>\n"
+            f"• Нажмите /start для начала работы\n"
+            f"• Используйте кнопку '📥 Скачать конфиг' для получения файла конфигурации\n"
+            f"• Используйте кнопку '🔳 QR-код' для быстрого подключения\n"
+            f"• Кнопка '📘 Инструкция' покажет подробное руководство\n"
+            f"• Кнопка '⏳ Остаток времени' покажет срок действия подписки\n\n"
+            f"🔧 <b>Подключение:</b>\n"
+            f"1. Скачайте файл конфигурации\n"
+            f"2. Установите приложение WireGuard на устройство\n"
+            f"3. Импортируйте файл в приложение\n"
+            f"4. Подключайтесь к VPN!\n\n"
+            f"❓ Если возникнут вопросы, обращайтесь к администратору."
+        )
+        
+        # Пытаемся отправить сообщение пользователю
+        try:
+            await call.bot.send_message(
+                chat_id=f"@{username}",
+                text=notification_text
+            )
+            await call.answer("✅ Уведомление отправлено!")
+            
+        except Exception as e:
+            logger.error(f"Ошибка отправки уведомления пользователю @{username}: {e}")
+            await call.answer("❌ Не удалось отправить уведомление. Возможно, пользователь не запускал бота.", show_alert=True)
+            
+    except Exception as e:
+        logger.error(f"Ошибка уведомления клиента: {e}")
+        await call.answer("❌ Ошибка отправки уведомления", show_alert=True)
 
 
 @router.callback_query(F.data == "admin:broadcast")

@@ -146,3 +146,44 @@ PersistentKeepalive = 25
     async def get_peer_qr_png(self, peer_id: str) -> bytes:
         # Поскольку API эндпоинты не работают, возвращаем пустые байты
         return b""
+
+    async def check_for_updates(self, current_version: str) -> Dict[str, Any]:
+        """Проверяет доступность обновлений WG-Easy"""
+        try:
+            # Получаем информацию о последнем релизе с GitHub
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://api.github.com/repos/wg-easy/wg-easy/releases/latest",
+                    timeout=10
+                )
+                
+                if response.status_code == 200:
+                    release_data = response.json()
+                    latest_version = release_data.get("tag_name", "").lstrip("v")
+                    current_version_clean = current_version.lstrip("v")
+                    
+                    # Простое сравнение версий (можно улучшить)
+                    is_update_available = latest_version != current_version_clean
+                    
+                    return {
+                        "current_version": current_version,
+                        "latest_version": f"v{latest_version}",
+                        "is_update_available": is_update_available,
+                        "release_url": release_data.get("html_url", ""),
+                        "release_notes": release_data.get("body", "")[:200] + "..." if release_data.get("body") else ""
+                    }
+                else:
+                    return {
+                        "current_version": current_version,
+                        "latest_version": "Неизвестно",
+                        "is_update_available": False,
+                        "error": f"GitHub API вернул статус {response.status_code}"
+                    }
+                    
+        except Exception as e:
+            return {
+                "current_version": current_version,
+                "latest_version": "Неизвестно", 
+                "is_update_available": False,
+                "error": str(e)
+            }

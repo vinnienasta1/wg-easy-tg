@@ -9,9 +9,14 @@ services:
       - .env
     volumes:
       - ./data:/app/data
+      - wg-easy-data:/etc/wireguard:ro
     networks:
       - wg-network
 
 networks:
   wg-network:
     driver: bridge
+
+volumes:
+  wg-easy-data:
+    external: true
