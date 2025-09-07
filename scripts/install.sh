@@ -61,12 +61,16 @@ echo ""
 echo "👤 Enter admin Telegram IDs (comma-separated, e.g., 123456789,987654321):"
 read -p "Admin IDs: " ADMIN_IDS
 
-# Server IP
+# Server URL (IP or domain)
 while true; do
-    read -p "🌐 Enter your server IP address (e.g., 192.168.1.100): " SERVER_IP
-    if [[ $SERVER_IP =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+    read -p "🌐 Enter your server URL (IP or domain, e.g., 192.168.1.100 or vpn.example.com): " SERVER_URL
+    # Remove protocol if present
+    SERVER_URL=$(echo "$SERVER_URL" | sed 's|^https\?://||')
+    
+    # Check if it's a valid IP address
+    if [[ $SERVER_URL =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
         # Check if each octet is valid (0-255)
-        IFS='.' read -ra ADDR <<< "$SERVER_IP"
+        IFS='.' read -ra ADDR <<< "$SERVER_URL"
         valid=true
         for i in "${ADDR[@]}"; do
             if [[ $i -gt 255 || $i -lt 0 ]]; then
@@ -75,14 +79,39 @@ while true; do
             fi
         done
         if [[ $valid == true ]]; then
+            SERVER_IP="$SERVER_URL"
             break
         else
             echo "❌ Invalid IP address. Each number must be between 0-255"
         fi
+    # Check if it's a valid domain
+    elif [[ $SERVER_URL =~ ^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$ ]]; then
+        SERVER_IP="$SERVER_URL"
+        break
     else
-        echo "❌ Invalid IP address format. Please enter a valid IP like 192.168.1.100"
+        echo "❌ Invalid URL format. Please enter a valid IP (192.168.1.100) or domain (vpn.example.com)"
     fi
 done
+
+# Protocol selection
+echo ""
+echo "🔒 Select protocol:"
+echo "1) HTTP (for IP addresses or local domains)"
+echo "2) HTTPS (for domains with SSL certificates)"
+read -p "Choose protocol (1 or 2): " PROTOCOL_CHOICE
+
+case $PROTOCOL_CHOICE in
+    1)
+        PROTOCOL="http"
+        ;;
+    2)
+        PROTOCOL="https"
+        ;;
+    *)
+        echo "❌ Invalid choice. Defaulting to HTTPS"
+        PROTOCOL="https"
+        ;;
+esac
 
 # WG-Easy Port
 read -p "🔌 Enter WG-Easy web interface port (default: 51821): " WG_PORT
@@ -120,7 +149,7 @@ echo "📝 Creating .env file..."
 cat > .env << EOF
 TG_BOT_TOKEN=$TG_BOT_TOKEN
 ADMINS=$ADMIN_IDS
-WG_EASY_BASE_URL=http://$SERVER_IP:$WG_PORT
+WG_EASY_BASE_URL=$PROTOCOL://$SERVER_IP:$WG_PORT
 WG_EASY_USERNAME=$WG_USERNAME
 WG_EASY_PASSWORD=$WG_PASSWORD
 WG_EASY_VERIFY_SSL=$WG_VERIFY_SSL
