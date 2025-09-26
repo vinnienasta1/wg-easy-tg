@@ -115,6 +115,7 @@ services:
       - "${DOCKER_GID}"
     networks:
       - wg-easy-network
+    command: ["/bin/sh","-c","chmod 666 /var/run/docker.sock || true; python -m app.main"]
 
 networks:
   wg-easy-network:
