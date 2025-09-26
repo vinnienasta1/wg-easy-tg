@@ -104,8 +104,12 @@ services:
     privileged: true
     env_file:
       - .env
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    security_opt:
+      - apparmor:unconfined
     networks:
       - wg-easy-network
 
