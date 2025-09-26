@@ -126,21 +126,29 @@ class WGEasyBot:
             return f"❌ Ошибка получения статуса: {str(e)}"
     
     def get_speed_test(self) -> str:
-        """Проверить скорость интернета (упрощенная версия)"""
+        """Проверить реальную скорость интернета (download/upload/ping)"""
         try:
-            # Простая проверка через ping
             result = subprocess.run(
-                ["ping", "-c", "2", "8.8.8.8"], 
-                capture_output=True, text=True, timeout=8
+                ["speedtest", "--accept-license", "--accept-gdpr", "--format=json"],
+                capture_output=True, text=True, timeout=60
             )
-            if result.returncode == 0:
-                return """🚀 *Тест скорости*
+            if result.returncode != 0:
+                return f"❌ Ошибка speedtest: {result.stderr.strip() or 'неизвестная ошибка'}"
+            data = json.loads(result.stdout)
+            ping_ms = round(data.get("ping", {}).get("latency", 0))
+            download_mbps = round((data.get("download", {}).get("bandwidth", 0) * 8) / 1_000_000, 2)
+            upload_mbps = round((data.get("upload", {}).get("bandwidth", 0) * 8) / 1_000_000, 2)
+            isp = data.get("isp", "N/A")
+            server_name = data.get("server", {}).get("name", "N/A")
 
-✅ *Соединение стабильное*
+            return f"""🚀 *Тест скорости*
+
 📡 *Сервер*: {WG_EASY_URL}
-🏓 *Ping до Google DNS*: OK"""
-            else:
-                return "❌ Ошибка проверки скорости"
+🏓 *Ping*: {ping_ms} ms
+⬇️ *Download*: {download_mbps} Mbit/s
+⬆️ *Upload*: {upload_mbps} Mbit/s
+🏢 *ISP*: {isp}
+🛰️ *Speedtest сервер*: {server_name}"""
         except Exception as e:
             return f"❌ Ошибка: {str(e)}"
     

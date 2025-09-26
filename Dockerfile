@@ -3,6 +3,7 @@ FROM python:3.12-slim
 # Устанавливаем системные зависимости
 RUN apt-get update && apt-get install -y \
     curl \
+    iputils-ping \
     docker.io \
     && rm -rf /var/lib/apt/lists/*
 
