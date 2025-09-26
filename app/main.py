@@ -19,7 +19,7 @@ from datetime import datetime
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
 BASE_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
-WG_EASY_URL = os.getenv("WG_EASY_URL", "http://localhost:1228")
+WG_EASY_URL = os.getenv("WG_EASY_URL", "http://localhost:51821")
 MONITOR_INTERVAL = int(os.getenv("MONITOR_INTERVAL", "10"))
 
 # Настройка логирования (только ошибки)
