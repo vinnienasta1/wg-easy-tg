@@ -372,10 +372,10 @@ start_bot() {
     ensure_compose_file
     
     # Останавливаем существующий контейнер если есть
-    $COMPOSE_CMD down 2>/dev/null || true
+    $COMPOSE_CMD -f docker-compose.yml down 2>/dev/null || true
     
     # Собираем и запускаем
-    $COMPOSE_CMD up -d --build
+    $COMPOSE_CMD -f docker-compose.yml up -d --build
     
     if [ $? -eq 0 ]; then
         print_message "Бот успешно запущен ✓"
@@ -394,7 +394,7 @@ create_management_scripts() {
 #!/bin/bash
 echo "Запуск WG-Easy Telegram Bot..."
 if docker compose version >/dev/null 2>&1; then COMPOSE_CMD="docker compose"; else COMPOSE_CMD="docker-compose"; fi
-$COMPOSE_CMD up -d
+$COMPOSE_CMD -f docker-compose.yml up -d
 echo "Бот запущен!"
 EOF
     
@@ -403,7 +403,7 @@ EOF
 #!/bin/bash
 echo "Остановка WG-Easy Telegram Bot..."
 if docker compose version >/dev/null 2>&1; then COMPOSE_CMD="docker compose"; else COMPOSE_CMD="docker-compose"; fi
-$COMPOSE_CMD down
+$COMPOSE_CMD -f docker-compose.yml down
 echo "Бот остановлен!"
 EOF
     
@@ -412,7 +412,7 @@ EOF
 #!/bin/bash
 echo "Просмотр логов WG-Easy Telegram Bot..."
 if docker compose version >/dev/null 2>&1; then COMPOSE_CMD="docker compose"; else COMPOSE_CMD="docker-compose"; fi
-$COMPOSE_CMD logs -f wg-easy-tg-bot
+$COMPOSE_CMD -f docker-compose.yml logs -f wg-easy-tg-bot
 EOF
     
     # Скрипт перезапуска
@@ -420,7 +420,7 @@ EOF
 #!/bin/bash
 echo "Перезапуск WG-Easy Telegram Bot..."
 if docker compose version >/dev/null 2>&1; then COMPOSE_CMD="docker compose"; else COMPOSE_CMD="docker-compose"; fi
-$COMPOSE_CMD restart wg-easy-tg-bot
+$COMPOSE_CMD -f docker-compose.yml restart wg-easy-tg-bot
 echo "Бот перезапущен!"
 EOF
     
