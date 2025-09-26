@@ -19,16 +19,25 @@ Telegram бот для мониторинга и управления серве
 
 ## 🛠 Быстрая установка
 
-### Автоматическая установка (рекомендуется):
+### 🚀 Установка одной командой (рекомендуется):
 
 ```bash
-# Клонируйте репозиторий
+curl -fsSL https://raw.githubusercontent.com/vinnienasta1/wg-easy-tg/main/install.sh | sudo bash
+```
+
+### Альтернативные способы:
+
+#### Через git clone:
+```bash
 git clone https://github.com/vinnienasta1/wg-easy-tg.git
 cd wg-easy-tg
+sudo bash install.sh
+```
 
-# Запустите установщик (требует sudo)
-sudo chmod +x scripts/install.sh
-sudo ./scripts/install.sh
+#### Через wget:
+```bash
+wget -O install.sh https://raw.githubusercontent.com/vinnienasta1/wg-easy-tg/main/install.sh
+sudo bash install.sh
 ```
 
 **Установщик автоматически:**
