@@ -1,19 +1,16 @@
-version: '3.8'
-
 services:
   wg-easy-tg-bot:
     build: .
     container_name: wg-easy-tg-bot
     restart: unless-stopped
+    user: "0:0"
+    privileged: true
     env_file:
       - .env
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - wg-easy-network
-
-volumes:
-  wg-easy_etc_wireguard:
 
 networks:
   wg-easy-network:

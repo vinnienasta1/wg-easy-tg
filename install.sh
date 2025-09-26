@@ -101,6 +101,7 @@ services:
     container_name: wg-easy-tg-bot
     restart: unless-stopped
     user: "0:0"
+    privileged: true
     env_file:
       - .env
     volumes:

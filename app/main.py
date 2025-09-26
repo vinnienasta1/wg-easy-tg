@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 
 PERSISTENT_KEYBOARD = {
     "keyboard": [
-        [{"text": "/status"}, {"text": "/speed"}],
-        [{"text": "/restart"}, {"text": "/monitoring"}]
+        [{"text": "📊 Статус"}, {"text": "🚀 Скорость"}],
+        [{"text": "🔄 Перезагрузка"}, {"text": "🔔 Мониторинг"}]
     ],
     "resize_keyboard": True,
     "is_persistent": True
@@ -309,23 +309,26 @@ def handle_message(bot: WGEasyBot, message: Dict[str, Any]) -> None:
         bot.send_message(chat_id, "❌ Доступ запрещен")
         return
     
-    if text == "/start":
-        keyboard = create_main_menu()
-        bot.send_message(chat_id, "🤖 *WG-Easy Bot с мониторингом*\n\nВыберите действие:", keyboard)
-    
-    elif text == "/status":
+    if text == "/start" or text == "start" or text == "🧭 Меню":
+        bot.send_message(chat_id, "🤖 *WG-Easy Bot с мониторингом*\nГотов к работе.")
+        
+    elif text in ("/status", "📊 Статус"):
         status = bot.get_server_status()
         bot.send_message(chat_id, status)
-    
-    elif text == "/speed":
+     
+    elif text in ("/speed", "🚀 Скорость"):
         speed = bot.get_speed_test()
         bot.send_message(chat_id, speed)
-    
-    elif text == "/restart":
-        result = bot.restart_container()
-        bot.send_message(chat_id, result)
-    
-    elif text == "/monitoring":
+     
+    elif text in ("/restart", "🔄 Перезагрузка"):
+        keyboard = create_restart_confirmation()
+        bot.send_message(
+            chat_id,
+            "🔄 *Вы уверены?*\n\nЭто перезапустит контейнер wg-easy и временно прервёт VPN соединения.",
+            keyboard
+        )
+     
+    elif text in ("/monitoring", "🔔 Мониторинг"):
         monitor_status = bot.toggle_monitoring()
         bot.send_message(chat_id, monitor_status)
 
@@ -350,7 +353,7 @@ def handle_callback(bot: WGEasyBot, callback_query: Dict[str, Any]) -> None:
         keyboard = create_restart_confirmation()
         bot.send_message(
             chat_id, 
-            "🔄 *Вы уверены?*\n\nЭто перезапустит контейнер wg-easy и временно прервет VPN соединения.", 
+            "🔄 *Вы уверены?*\n\nЭто перезапустит контейнер wg-easy и временно прервёт VPN соединения.", 
             keyboard
         )
         
@@ -365,9 +368,7 @@ def handle_callback(bot: WGEasyBot, callback_query: Dict[str, Any]) -> None:
         monitor_status = bot.toggle_monitoring()
         bot.send_message(chat_id, monitor_status)
     
-    # Показываем главное меню после каждого действия
-    keyboard = create_main_menu()
-    bot.send_message(chat_id, "🤖 *WG-Easy Bot с мониторингом*\n\nВыберите действие:", keyboard)
+    # Больше не отправляем дублирующее меню; постоянные кнопки уже видны
 
 def main():
     """Основная функция"""
