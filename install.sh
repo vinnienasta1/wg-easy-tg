@@ -100,6 +100,7 @@ services:
       context: https://github.com/vinnienasta1/wg-easy-tg.git#main
     container_name: wg-easy-tg-bot
     restart: unless-stopped
+    user: "0:0"
     env_file:
       - .env
     volumes:

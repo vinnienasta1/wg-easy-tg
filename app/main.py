@@ -29,6 +29,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+PERSISTENT_KEYBOARD = {
+    "keyboard": [
+        [{"text": "/status"}, {"text": "/speed"}],
+        [{"text": "/restart"}, {"text": "/monitoring"}]
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True
+}
+
 class WGEasyBot:
     """Класс для управления WG-Easy через Telegram с мониторингом"""
     
@@ -50,6 +59,8 @@ class WGEasyBot:
             }
             if reply_markup:
                 data["reply_markup"] = json.dumps(reply_markup)
+            else:
+                data["reply_markup"] = json.dumps(PERSISTENT_KEYBOARD)
             
             response = self.session.post(f"{BASE_URL}/sendMessage", data=data, timeout=5)
             response.raise_for_status()
@@ -128,27 +139,41 @@ class WGEasyBot:
     def get_speed_test(self) -> str:
         """Проверить реальную скорость интернета (download/upload/ping)"""
         try:
+            # Основной путь: speedtest-cli JSON
             result = subprocess.run(
-                ["speedtest", "--accept-license", "--accept-gdpr", "--format=json"],
-                capture_output=True, text=True, timeout=60
+                ["speedtest-cli", "--json"],
+                capture_output=True, text=True, timeout=90
             )
-            if result.returncode != 0:
-                return f"❌ Ошибка speedtest: {result.stderr.strip() or 'неизвестная ошибка'}"
-            data = json.loads(result.stdout)
-            ping_ms = round(data.get("ping", {}).get("latency", 0))
-            download_mbps = round((data.get("download", {}).get("bandwidth", 0) * 8) / 1_000_000, 2)
-            upload_mbps = round((data.get("upload", {}).get("bandwidth", 0) * 8) / 1_000_000, 2)
-            isp = data.get("isp", "N/A")
-            server_name = data.get("server", {}).get("name", "N/A")
+            if result.returncode != 0 or not result.stdout.strip():
+                # Фоллбек: текстовый вывод
+                txt = subprocess.run(["speedtest-cli"], capture_output=True, text=True, timeout=90)
+                if txt.returncode != 0:
+                    return f"❌ Ошибка speedtest: {result.stderr.strip() or txt.stderr.strip() or 'неизвестная ошибка'}"
+                out = txt.stdout
+                # Простейший парсинг
+                import re
+                ping_match = re.search(r"Ping:\s*([0-9.]+) ms", out)
+                down_match = re.search(r"Download:\s*([0-9.]+) Mbit/s", out)
+                up_match = re.search(r"Upload:\s*([0-9.]+) Mbit/s", out)
+                ping_ms = ping_match.group(1) if ping_match else "N/A"
+                download_mbps = down_match.group(1) if down_match else "N/A"
+                upload_mbps = up_match.group(1) if up_match else "N/A"
+                return f"""🚀 *Тест скорости*
 
+📡 *Сервер*: {WG_EASY_URL}
+🏓 *Ping*: {ping_ms} ms
+⬇️ *Download*: {download_mbps} Mbit/s
+⬆️ *Upload*: {upload_mbps} Mbit/s"""
+            data = json.loads(result.stdout)
+            ping_ms = round(float(data.get("ping", 0))) if "ping" in data else "N/A"
+            download_mbps = round(float(data.get("download", 0)) / 1_000_000, 2) if "download" in data else "N/A"
+            upload_mbps = round(float(data.get("upload", 0)) / 1_000_000, 2) if "upload" in data else "N/A"
             return f"""🚀 *Тест скорости*
 
 📡 *Сервер*: {WG_EASY_URL}
 🏓 *Ping*: {ping_ms} ms
 ⬇️ *Download*: {download_mbps} Mbit/s
-⬆️ *Upload*: {upload_mbps} Mbit/s
-🏢 *ISP*: {isp}
-🛰️ *Speedtest сервер*: {server_name}"""
+⬆️ *Upload*: {upload_mbps} Mbit/s"""
         except Exception as e:
             return f"❌ Ошибка: {str(e)}"
     
@@ -156,18 +181,16 @@ class WGEasyBot:
         """Перезапустить контейнер"""
         try:
             logger.error("Перезапуск контейнера wg-easy")
-            subprocess.run(["docker", "restart", "wg-easy"], check=True, timeout=30)
+            result = subprocess.run(["docker", "restart", "wg-easy"], capture_output=True, text=True, timeout=60)
+            if result.returncode != 0:
+                return f"❌ Ошибка перезапуска: {result.stderr.strip() or result.stdout.strip() or 'неизвестная ошибка'}"
             time.sleep(2)
-            
-            # Проверяем статус после перезапуска
-            result = subprocess.run(
-                ["docker", "ps", "--filter", "name=wg-easy", "--format", "{{.Status}}"], 
-                capture_output=True, text=True, timeout=3
+            status = subprocess.run(
+                ["docker", "ps", "--filter", "name=wg-easy", "--format", "{{.Status}}"],
+                capture_output=True, text=True, timeout=5
             )
-            status = result.stdout.strip() or "Статус неизвестен"
-            
-            return f"✅ *Контейнер перезапущен!*\n\nСтатус: {status}"
-            
+            status_text = status.stdout.strip() or "Статус неизвестен"
+            return f"✅ *Контейнер перезапущен!*\n\nСтатус: {status_text}"
         except Exception as e:
             logger.error(f"Ошибка перезапуска: {e}")
             return f"❌ Ошибка перезапуска: {str(e)}"
