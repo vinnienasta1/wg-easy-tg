@@ -286,6 +286,14 @@ get_user_settings() {
     
     # WG-Easy URL
     if [ "$INTERACTIVE" -eq 1 ]; then
+        echo -e "${CYAN}Укажите базовый URL веб-интерфейса WG-Easy:${NC}"
+        echo "- Формат: http://HOST:51821"
+        echo "- Примеры:"
+        echo "    http://localhost:51821"
+        echo "    http://192.168.1.10:51821"
+        echo "    http://example.com:51821"
+        echo "- Если используете обратный прокси (Nginx/Traefik), укажите его внешний URL"
+        echo
         ask_or_default "URL WG-Easy сервера [$WG_EASY_URL]: " USER_WG_EASY_URL ""
         if [[ -n "$USER_WG_EASY_URL" ]]; then
             WG_EASY_URL="$USER_WG_EASY_URL"
