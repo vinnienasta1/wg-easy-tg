@@ -247,6 +247,21 @@ class WGEasyBot:
         if self.monitor_thread and self.monitor_thread.is_alive():
             return
         
+        # Инициализируем прошлый статус перед стартом цикла
+        try:
+            is_healthy, status_msg = self.check_wg_easy_status()
+            self.last_status = is_healthy
+            if not is_healthy:
+                current_time = datetime.now().strftime("%H:%M:%S")
+                alert_message = f"""🚨 *АЛЕРТ: WG-Easy недоступен!*
+
+⏰ *Время*: {current_time}
+❌ *Статус*: {status_msg}
+🔧 *Рекомендация*: Проверьте контейнер и перезапустите при необходимости"""
+                self.send_message(ADMIN_ID, alert_message)
+        except Exception as e:
+            logger.error(f"Инициализация статуса мониторинга: {e}")
+        
         self.stop_monitoring = False
         self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
         self.monitor_thread.start()
