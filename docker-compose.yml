@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  wg-easy-tg-bot:
+    build: .
+    container_name: wg-easy-tg-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - wg-easy-network
+
+volumes:
+  wg-easy_etc_wireguard:
+
+networks:
+  wg-easy-network:
+    driver: bridge
