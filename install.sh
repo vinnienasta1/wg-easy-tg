@@ -38,13 +38,20 @@ print_step() {
     echo -e "${PURPLE}[STEP]${NC} $1"
 }
 
-# Определение интерактивного режима (TTY доступен?)
+# Режим взаимодействия: по умолчанию интерактивный; NONINTERACTIVE=1 отключает вопросы
 INTERACTIVE=1
 if [ -n "$NONINTERACTIVE" ] && [ "$NONINTERACTIVE" = "1" ]; then
     INTERACTIVE=0
-elif [ ! -t 0 ] || [ ! -t 1 ]; then
-    INTERACTIVE=0
 fi
+
+# Чтение ввода из /dev/tty (работает даже при pipe)
+prompt_tty() {
+    local __prompt="$1"
+    local __var_name="$2"
+    local __value
+    IFS= read -r -p "$__prompt" __value </dev/tty
+    eval "$__var_name=\"$__value\""
+}
 
 # Функция безопасного ввода: в неинтерактивном режиме возвращает значение по умолчанию
 ask_or_default() {
@@ -54,7 +61,7 @@ ask_or_default() {
     local input_value
 
     if [ "$INTERACTIVE" -eq 1 ]; then
-        read -p "$prompt" input_value
+        prompt_tty "$prompt" input_value
         if [ -z "$input_value" ]; then
             eval "$var_name=\"$default_value\""
         else
@@ -212,7 +219,7 @@ check_wg_easy() {
         echo "  weejewel/wg-easy"
         echo
         if [ "$INTERACTIVE" -eq 1 ]; then
-            read -p "Продолжить установку бота? (y/N): " -n 1 -r
+            IFS= read -r -p "Продолжить установку бота? (y/N): " -n 1 -u 0 -s REPLY </dev/tty
             echo
             if [[ ! $REPLY =~ ^[Yy]$ ]]; then
                 print_message "Установка отменена."
@@ -225,22 +232,7 @@ check_wg_easy() {
         print_message "WG-Easy найден и запущен ✓"
     fi
     
-    # Проверяем доступность веб-интерфейса
-    WG_EASY_URL="${WG_EASY_URL:-http://localhost:51821}"
-    if curl -s --connect-timeout 5 "$WG_EASY_URL" > /dev/null; then
-        print_message "Веб-интерфейс WG-Easy доступен ✓"
-    else
-        print_warning "Веб-интерфейс WG-Easy недоступен по адресу $WG_EASY_URL"
-        echo
-        if [ "$INTERACTIVE" -eq 1 ]; then
-            read -p "Введите правильный URL для WG-Easy (например: http://IP:51821): " WG_EASY_URL
-            if [[ -z "$WG_EASY_URL" ]]; then
-                WG_EASY_URL="http://localhost:51821"
-            fi
-        else
-            print_warning "Неинтерактивный режим: оставлен URL по умолчанию $WG_EASY_URL"
-        fi
-    fi
+    # Убрана проверка доступности веб-интерфейса по требованию пользователя
 }
 
 # Функция получения настроек от пользователя
@@ -256,7 +248,7 @@ get_user_settings() {
             echo "2. Отправьте команду /newbot"
             echo "3. Следуйте инструкциям"
             echo
-            read -p "Введите токен Telegram бота: " TELEGRAM_TOKEN
+            prompt_tty "Введите токен Telegram бота: " TELEGRAM_TOKEN
             if [[ -n "$TELEGRAM_TOKEN" ]]; then
                 break
             else
@@ -278,7 +270,7 @@ get_user_settings() {
             echo "2. Отправьте любое сообщение"
             echo "3. Скопируйте ваш ID"
             echo
-            read -p "Введите ваш Telegram ID: " ADMIN_ID
+            prompt_tty "Введите ваш Telegram ID: " ADMIN_ID
             if [[ "$ADMIN_ID" =~ ^[0-9]+$ ]]; then
                 break
             else
