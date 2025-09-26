@@ -8,14 +8,14 @@ services:
     env_file:
       - .env
     environment:
-      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DOCKER_HOST=unix:///docker.sock
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/docker.sock
     security_opt:
       - apparmor:unconfined
     networks:
       - wg-easy-network
-    command: ["/bin/sh","-c","chmod 666 /var/run/docker.sock || true; python -m app.main"]
+    command: ["/bin/sh","-c","chmod 666 /docker.sock || true; python -m app.main"]
 
 networks:
   wg-easy-network:

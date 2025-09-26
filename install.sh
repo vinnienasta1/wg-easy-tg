@@ -106,16 +106,16 @@ services:
     env_file:
       - .env
     environment:
-      - DOCKER_HOST=unix:///var/run/docker.sock
+      - DOCKER_HOST=unix:///docker.sock
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DOCKER_SOCKET_PATH}:/docker.sock
     security_opt:
       - apparmor:unconfined
     group_add:
       - "${DOCKER_GID}"
     networks:
       - wg-easy-network
-    command: ["/bin/sh","-c","chmod 666 /var/run/docker.sock || true; python -m app.main"]
+    command: ["/bin/sh","-c","chmod 666 /docker.sock || true; python -m app.main"]
 
 networks:
   wg-easy-network:
@@ -354,8 +354,26 @@ get_user_settings() {
 create_env_file() {
     print_step "Создание файла конфигурации..."
     
-    # Определяем GID группы docker для доступа к сокету
-    DOCKER_GID=$(stat -c %g /var/run/docker.sock 2>/dev/null || echo "0")
+    # Определяем GID и путь сокета Docker для доступа
+    DETECTED_SOCKET=""
+    if [ -n "$DOCKER_HOST" ] && echo "$DOCKER_HOST" | grep -q '^unix://'; then
+        DETECTED_SOCKET="${DOCKER_HOST#unix://}"
+    fi
+    if [ -z "$DETECTED_SOCKET" ] && [ -S /var/run/docker.sock ]; then
+        DETECTED_SOCKET="/var/run/docker.sock"
+    fi
+    if [ -z "$DETECTED_SOCKET" ]; then
+        CANDIDATE=$(ls /run/user/*/docker.sock 2>/dev/null | head -n1)
+        if [ -n "$CANDIDATE" ]; then
+            DETECTED_SOCKET="$CANDIDATE"
+        fi
+    fi
+    if [ -z "$DETECTED_SOCKET" ]; then
+        print_warning "Не найден docker.sock. Будет использован путь по умолчанию /var/run/docker.sock"
+        DETECTED_SOCKET="/var/run/docker.sock"
+    fi
+    DOCKER_SOCKET_PATH="$DETECTED_SOCKET"
+    DOCKER_GID=$(stat -c %g "$DOCKER_SOCKET_PATH" 2>/dev/null || echo "0")
 
     cat > .env << EOF
 # WG-Easy Telegram Bot Configuration
@@ -366,6 +384,7 @@ MONITOR_INTERVAL=$MONITOR_INTERVAL
 
 # Docker настройки
 COMPOSE_PROJECT_NAME=wg-easy-tg
+DOCKER_SOCKET_PATH=$DOCKER_SOCKET_PATH
 DOCKER_GID=$DOCKER_GID
 EOF
     
