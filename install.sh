@@ -85,6 +85,19 @@ else
     COMPOSE_CMD="docker-compose"
 fi
 
+# Обеспечить наличие docker-compose.yml
+ensure_compose_file() {
+    if [ ! -f docker-compose.yml ]; then
+        print_step "Загрузка docker-compose.yml..."
+        curl -fsSL https://raw.githubusercontent.com/vinnienasta1/wg-easy-tg/main/docker-compose.yml -o docker-compose.yml
+        if [ $? -ne 0 ] || [ ! -s docker-compose.yml ]; then
+            print_error "Не удалось загрузить docker-compose.yml"
+            exit 1
+        fi
+        print_message "docker-compose.yml загружен ✓"
+    fi
+}
+
 # Функция проверки операционной системы
 detect_os() {
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -354,6 +367,9 @@ test_bot() {
 # Функция запуска бота
 start_bot() {
     print_step "Запуск бота..."
+    
+    # Убедиться, что есть docker-compose.yml
+    ensure_compose_file
     
     # Останавливаем существующий контейнер если есть
     $COMPOSE_CMD down 2>/dev/null || true
