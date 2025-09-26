@@ -102,6 +102,7 @@ services:
     restart: unless-stopped
     user: "0:0"
     privileged: true
+    userns_mode: "host"
     env_file:
       - .env
     environment:
@@ -110,6 +111,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     security_opt:
       - apparmor:unconfined
+    group_add:
+      - "${DOCKER_GID}"
     networks:
       - wg-easy-network
 
@@ -350,6 +353,9 @@ get_user_settings() {
 create_env_file() {
     print_step "Создание файла конфигурации..."
     
+    # Определяем GID группы docker для доступа к сокету
+    DOCKER_GID=$(stat -c %g /var/run/docker.sock 2>/dev/null || echo "0")
+
     cat > .env << EOF
 # WG-Easy Telegram Bot Configuration
 TELEGRAM_TOKEN=$TELEGRAM_TOKEN
@@ -359,6 +365,7 @@ MONITOR_INTERVAL=$MONITOR_INTERVAL
 
 # Docker настройки
 COMPOSE_PROJECT_NAME=wg-easy-tg
+DOCKER_GID=$DOCKER_GID
 EOF
     
     print_message "Файл .env создан ✓"

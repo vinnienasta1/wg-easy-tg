@@ -147,23 +147,42 @@ class WGEasyBot:
             if result.returncode != 0 or not result.stdout.strip():
                 # Фоллбек: текстовый вывод
                 txt = subprocess.run(["speedtest-cli"], capture_output=True, text=True, timeout=90)
-                if txt.returncode != 0:
-                    return f"❌ Ошибка speedtest: {result.stderr.strip() or txt.stderr.strip() or 'неизвестная ошибка'}"
-                out = txt.stdout
-                # Простейший парсинг
-                import re
-                ping_match = re.search(r"Ping:\s*([0-9.]+) ms", out)
-                down_match = re.search(r"Download:\s*([0-9.]+) Mbit/s", out)
-                up_match = re.search(r"Upload:\s*([0-9.]+) Mbit/s", out)
-                ping_ms = ping_match.group(1) if ping_match else "N/A"
-                download_mbps = down_match.group(1) if down_match else "N/A"
-                upload_mbps = up_match.group(1) if up_match else "N/A"
-                return f"""🚀 *Тест скорости*
+                if txt.returncode == 0 and txt.stdout:
+                    out = txt.stdout
+                    import re
+                    ping_match = re.search(r"Ping:\s*([0-9.]+) ms", out)
+                    down_match = re.search(r"Download:\s*([0-9.]+) Mbit/s", out)
+                    up_match = re.search(r"Upload:\s*([0-9.]+) Mbit/s", out)
+                    ping_ms = ping_match.group(1) if ping_match else "N/A"
+                    download_mbps = down_match.group(1) if down_match else "N/A"
+                    upload_mbps = up_match.group(1) if up_match else "N/A"
+                    return f"""🚀 *Тест скорости*
 
 📡 *Сервер*: {WG_EASY_URL}
 🏓 *Ping*: {ping_ms} ms
 ⬇️ *Download*: {download_mbps} Mbit/s
 ⬆️ *Upload*: {upload_mbps} Mbit/s"""
+                # Второй фоллбек: измерение download по прямой закачке
+                try:
+                    import time as _t
+                    test_url = "https://speed.hetzner.de/100MB.bin"
+                    t0 = _t.time()
+                    r = self.session.get(test_url, stream=True, timeout=60)
+                    total = 0
+                    for chunk in r.iter_content(chunk_size=1024 * 256):
+                        if not chunk:
+                            break
+                        total += len(chunk)
+                        if _t.time() - t0 > 8:
+                            break
+                    dt = _t.time() - t0
+                    mbps = round((total * 8) / 1_000_000 / max(dt, 0.001), 2)
+                    return f"""🚀 *Тест скорости (simple)*
+
+📡 *Сервер*: {WG_EASY_URL}
+⬇️ *Download (оценка)*: {mbps} Mbit/s (≈{int(total/1_000_000)} MB за {round(dt,1)}s)"""
+                except Exception as fe:
+                    return f"❌ Ошибка speedtest: {result.stderr.strip() or txt.stderr.strip() or str(fe)}"
             data = json.loads(result.stdout)
             ping_ms = round(float(data.get("ping", 0))) if "ping" in data else "N/A"
             download_mbps = round(float(data.get("download", 0)) / 1_000_000, 2) if "download" in data else "N/A"
