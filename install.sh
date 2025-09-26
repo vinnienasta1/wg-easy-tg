@@ -38,6 +38,46 @@ print_step() {
     echo -e "${PURPLE}[STEP]${NC} $1"
 }
 
+# Определение интерактивного режима (TTY доступен?)
+INTERACTIVE=1
+if [ -n "$NONINTERACTIVE" ] && [ "$NONINTERACTIVE" = "1" ]; then
+    INTERACTIVE=0
+elif [ ! -t 0 ] || [ ! -t 1 ]; then
+    INTERACTIVE=0
+fi
+
+# Функция безопасного ввода: в неинтерактивном режиме возвращает значение по умолчанию
+ask_or_default() {
+    local prompt="$1"
+    local var_name="$2"
+    local default_value="$3"
+    local input_value
+
+    if [ "$INTERACTIVE" -eq 1 ]; then
+        read -p "$prompt" input_value
+        if [ -z "$input_value" ]; then
+            eval "$var_name=\"$default_value\""
+        else
+            eval "$var_name=\"$input_value\""
+        fi
+    else
+        eval "current=\"\${$var_name}\""
+        if [ -n "$current" ]; then
+            eval "$var_name=\"$current\""
+        else
+            eval "$var_name=\"$default_value\""
+        fi
+        print_warning "Неинтерактивный режим: использовано значение по умолчанию для $var_name"
+    fi
+}
+
+# Определяем команду Docker Compose
+if docker compose version >/dev/null 2>&1; then
+    COMPOSE_CMD="docker compose"
+else
+    COMPOSE_CMD="docker-compose"
+fi
+
 # Функция проверки операционной системы
 detect_os() {
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -171,26 +211,34 @@ check_wg_easy() {
         echo "  --restart unless-stopped \\"
         echo "  weejewel/wg-easy"
         echo
-        read -p "Продолжить установку бота? (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            print_message "Установка отменена."
-            exit 0
+        if [ "$INTERACTIVE" -eq 1 ]; then
+            read -p "Продолжить установку бота? (y/N): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                print_message "Установка отменена."
+                exit 0
+            fi
+        else
+            print_warning "Неинтерактивный режим: продолжаем установку бота без подтверждения"
         fi
     else
         print_message "WG-Easy найден и запущен ✓"
     fi
     
     # Проверяем доступность веб-интерфейса
-    WG_EASY_URL="http://localhost:51821"
+    WG_EASY_URL="${WG_EASY_URL:-http://localhost:51821}"
     if curl -s --connect-timeout 5 "$WG_EASY_URL" > /dev/null; then
         print_message "Веб-интерфейс WG-Easy доступен ✓"
     else
         print_warning "Веб-интерфейс WG-Easy недоступен по адресу $WG_EASY_URL"
         echo
-        read -p "Введите правильный URL для WG-Easy (например: http://IP:51821): " WG_EASY_URL
-        if [[ -z "$WG_EASY_URL" ]]; then
-            WG_EASY_URL="http://localhost:51821"
+        if [ "$INTERACTIVE" -eq 1 ]; then
+            read -p "Введите правильный URL для WG-Easy (например: http://IP:51821): " WG_EASY_URL
+            if [[ -z "$WG_EASY_URL" ]]; then
+                WG_EASY_URL="http://localhost:51821"
+            fi
+        else
+            print_warning "Неинтерактивный режим: оставлен URL по умолчанию $WG_EASY_URL"
         fi
     fi
 }
@@ -201,46 +249,59 @@ get_user_settings() {
     echo
     
     # Telegram Bot Token
-    while true; do
-        echo -e "${CYAN}Для получения токена бота:${NC}"
-        echo "1. Напишите @BotFather в Telegram"
-        echo "2. Отправьте команду /newbot"
-        echo "3. Следуйте инструкциям"
-        echo
-        read -p "Введите токен Telegram бота: " TELEGRAM_TOKEN
-        if [[ -n "$TELEGRAM_TOKEN" ]]; then
-            break
-        else
-            print_error "Токен не может быть пустым!"
+    if [ "$INTERACTIVE" -eq 1 ]; then
+        while true; do
+            echo -e "${CYAN}Для получения токена бота:${NC}"
+            echo "1. Напишите @BotFather в Telegram"
+            echo "2. Отправьте команду /newbot"
+            echo "3. Следуйте инструкциям"
+            echo
+            read -p "Введите токен Telegram бота: " TELEGRAM_TOKEN
+            if [[ -n "$TELEGRAM_TOKEN" ]]; then
+                break
+            else
+                print_error "Токен не может быть пустым!"
+            fi
+        done
+    else
+        if [[ -z "$TELEGRAM_TOKEN" ]]; then
+            print_error "В неинтерактивном режиме установите TELEGRAM_TOKEN в окружении"
+            exit 1
         fi
-    done
+    fi
     
     # Admin ID
-    while true; do
-        echo -e "${CYAN}Для получения вашего Telegram ID:${NC}"
-        echo "1. Напишите @userinfobot в Telegram"
-        echo "2. Отправьте любое сообщение"
-        echo "3. Скопируйте ваш ID"
-        echo
-        read -p "Введите ваш Telegram ID: " ADMIN_ID
-        if [[ "$ADMIN_ID" =~ ^[0-9]+$ ]]; then
-            break
-        else
-            print_error "ID должен быть числом!"
+    if [ "$INTERACTIVE" -eq 1 ]; then
+        while true; do
+            echo -e "${CYAN}Для получения вашего Telegram ID:${NC}"
+            echo "1. Напишите @userinfobot в Telegram"
+            echo "2. Отправьте любое сообщение"
+            echo "3. Скопируйте ваш ID"
+            echo
+            read -p "Введите ваш Telegram ID: " ADMIN_ID
+            if [[ "$ADMIN_ID" =~ ^[0-9]+$ ]]; then
+                break
+            else
+                print_error "ID должен быть числом!"
+            fi
+        done
+    else
+        if [[ -z "$ADMIN_ID" || ! "$ADMIN_ID" =~ ^[0-9]+$ ]]; then
+            print_error "В неинтерактивном режиме установите числовой ADMIN_ID в окружении"
+            exit 1
         fi
-    done
+    fi
     
     # WG-Easy URL
-    read -p "URL WG-Easy сервера [$WG_EASY_URL]: " USER_WG_EASY_URL
-    if [[ -n "$USER_WG_EASY_URL" ]]; then
-        WG_EASY_URL="$USER_WG_EASY_URL"
+    if [ "$INTERACTIVE" -eq 1 ]; then
+        ask_or_default "URL WG-Easy сервера [$WG_EASY_URL]: " USER_WG_EASY_URL ""
+        if [[ -n "$USER_WG_EASY_URL" ]]; then
+            WG_EASY_URL="$USER_WG_EASY_URL"
+        fi
     fi
     
     # Интервал мониторинга
-    read -p "Интервал мониторинга в секундах [10]: " MONITOR_INTERVAL
-    if [[ -z "$MONITOR_INTERVAL" ]]; then
-        MONITOR_INTERVAL="10"
-    fi
+    ask_or_default "Интервал мониторинга в секундах [10]: " MONITOR_INTERVAL "${MONITOR_INTERVAL:-10}"
     
     echo
     print_message "Настройки сохранены ✓"
@@ -295,10 +356,10 @@ start_bot() {
     print_step "Запуск бота..."
     
     # Останавливаем существующий контейнер если есть
-    docker-compose down 2>/dev/null || true
+    $COMPOSE_CMD down 2>/dev/null || true
     
     # Собираем и запускаем
-    docker-compose up -d --build
+    $COMPOSE_CMD up -d --build
     
     if [ $? -eq 0 ]; then
         print_message "Бот успешно запущен ✓"
@@ -316,7 +377,8 @@ create_management_scripts() {
     cat > start_bot.sh << 'EOF'
 #!/bin/bash
 echo "Запуск WG-Easy Telegram Bot..."
-docker-compose up -d
+if docker compose version >/dev/null 2>&1; then COMPOSE_CMD="docker compose"; else COMPOSE_CMD="docker-compose"; fi
+$COMPOSE_CMD up -d
 echo "Бот запущен!"
 EOF
     
@@ -324,7 +386,8 @@ EOF
     cat > stop_bot.sh << 'EOF'
 #!/bin/bash
 echo "Остановка WG-Easy Telegram Bot..."
-docker-compose down
+if docker compose version >/dev/null 2>&1; then COMPOSE_CMD="docker compose"; else COMPOSE_CMD="docker-compose"; fi
+$COMPOSE_CMD down
 echo "Бот остановлен!"
 EOF
     
@@ -332,14 +395,16 @@ EOF
     cat > logs_bot.sh << 'EOF'
 #!/bin/bash
 echo "Просмотр логов WG-Easy Telegram Bot..."
-docker-compose logs -f wg-easy-tg-bot
+if docker compose version >/dev/null 2>&1; then COMPOSE_CMD="docker compose"; else COMPOSE_CMD="docker-compose"; fi
+$COMPOSE_CMD logs -f wg-easy-tg-bot
 EOF
     
     # Скрипт перезапуска
     cat > restart_bot.sh << 'EOF'
 #!/bin/bash
 echo "Перезапуск WG-Easy Telegram Bot..."
-docker-compose restart wg-easy-tg-bot
+if docker compose version >/dev/null 2>&1; then COMPOSE_CMD="docker compose"; else COMPOSE_CMD="docker-compose"; fi
+$COMPOSE_CMD restart wg-easy-tg-bot
 echo "Бот перезапущен!"
 EOF
     
