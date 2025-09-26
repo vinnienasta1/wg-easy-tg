@@ -87,9 +87,13 @@ fi
 
 # Обеспечить наличие docker-compose.yml
 ensure_compose_file() {
-    if [ ! -f docker-compose.yml ]; then
-        print_step "Подготовка docker-compose.yml..."
-        cat > docker-compose.yml << 'EOF'
+    print_step "Подготовка docker-compose.yml..."
+    if [ -f docker-compose.yml ]; then
+        ts=$(date +%s)
+        cp docker-compose.yml docker-compose.yml.bak.$ts 2>/dev/null || true
+        print_warning "Старый docker-compose.yml сохранён как docker-compose.yml.bak.$ts"
+    fi
+    cat > docker-compose.yml << 'EOF'
 services:
   wg-easy-tg-bot:
     build:
@@ -107,12 +111,11 @@ networks:
   wg-easy-network:
     driver: bridge
 EOF
-        if [ ! -s docker-compose.yml ]; then
-            print_error "Не удалось создать docker-compose.yml"
-            exit 1
-        fi
-        print_message "docker-compose.yml подготовлен ✓"
+    if [ ! -s docker-compose.yml ]; then
+        print_error "Не удалось создать docker-compose.yml"
+        exit 1
     fi
+    print_message "docker-compose.yml подготовлен ✓"
 }
 
 # Функция проверки операционной системы
